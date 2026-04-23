@@ -1,0 +1,6 @@
+node_modules/
+serviceAccountKey.json
+.env
+data/alumnos.json
+agenda-roots-v2-firebase-adminsdk-*.json
+carpas-web/qr-output/

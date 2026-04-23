@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda</title>
+    <link rel="icon" type="image/png" href="./assets/favicon.png">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-layout">
+            <div class="header-brand">
+                <div class="marca-superior">
+                    <div class="marca-izq">
+                        <img id="header-logo" class="logo-marca" src="./assets/logo-roots.png" alt="Logo Roots Studio" width="72" height="72">
+                        <div class="marca-textos">
+                            <h1 id="app-titulo">Agenda personalizada</h1>
+                            <p id="app-subtitulo">La mente crea realidades</p>
+                        </div>
+                    </div>
+                    <div class="marca-acciones">
+                        <img id="header-foto-perfil" class="header-foto-perfil hidden" alt="Foto de perfil" width="48" height="48">
+                        <button type="button" id="btn-abrir-config" class="btn-config" title="Configuracion y apariencia">Ajustes</button>
+                    </div>
+                </div>
+            </div>
+            <aside class="header-widgets" aria-label="Hora y clima">
+                <div class="widget">
+                    <div class="widget-head">Hora y clima · Buenos Aires</div>
+                    <div id="widget-reloj" class="widget-reloj">--:--</div>
+                    <div id="widget-clima-body" class="widget-clima">Cargando pronostico...</div>
+                </div>
+            </aside>
+        </div>
+    </header>
+
+    <main class="app-container">
+        <section class="calendario-container">
+            <div class="toolbar-superior">
+                <div class="botones-mes">
+                    <button id="prev-month" type="button">←</button>
+                    <button id="today-btn" type="button">Hoy</button>
+                    <button id="next-month" type="button">→</button>
+                </div>
+                <div class="vistatoggle">
+                    <button id="view-day" class="view-btn active" type="button">Vista diaria</button>
+                    <button id="view-week" class="view-btn" type="button">Vista semanal</button>
+                </div>
+            </div>
+
+            <div class="cabecera-mes">
+                <h2 id="nombre-mes"></h2>
+            </div>
+            <div id="month-grid"></div>
+            <div id="week-view" class="week-view hidden"></div>
+        </section>
+
+        <section class="panel-derecho">
+            <h3 id="selected-date-title"></h3>
+
+            <div class="pestanas">
+                <button class="pestana activa" data-tab="eventos" type="button">Eventos</button>
+                <button class="pestana" data-tab="notas" type="button">Notas</button>
+                <button class="pestana" data-tab="tareas" type="button">Tareas</button>
+            </div>
+
+            <div class="estado-vacio" id="estado-vacio">
+                Selecciona un dia para ver o crear contenido.
+            </div>
+
+            <div id="panel-content" class="panel-content hidden">
+                <article id="eventos-content" class="tab-content activo">
+                    <form id="evento-form" class="formulario">
+                        <label for="evento-titulo">Titulo</label>
+                        <input type="text" id="evento-titulo" required placeholder="Ej: Reunion escolar">
+
+                        <label for="evento-asunto">Asunto</label>
+                        <select id="evento-asunto" required></select>
+
+                        <label for="evento-hora">Hora</label>
+                        <input type="time" id="evento-hora" required>
+
+                        <label for="evento-descripcion">Descripcion</label>
+                        <textarea id="evento-descripcion" rows="2" placeholder="Detalles, lugar, etc. (opcional)"></textarea>
+
+                        <div class="form-actions">
+                            <button type="submit" id="evento-submit">Agregar evento</button>
+                            <button type="button" id="evento-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
+                            <select id="import-google-range" class="import-range-select" title="Rango de importacion Google Calendar">
+                                <option value="dia">Importar dia</option>
+                                <option value="semana">Importar semana</option>
+                                <option value="mes">Importar mes</option>
+                            </select>
+                            <button type="button" id="import-google-calendar" class="btn-cancelar">Importar Google Calendar</button>
+                        </div>
+                    </form>
+                    <div id="eventos-lista" class="lista"></div>
+                </article>
+
+                <article id="notas-content" class="tab-content">
+                    <form id="nota-form" class="formulario">
+                        <label for="nota-texto">Nota</label>
+                        <textarea id="nota-texto" rows="3" required placeholder="Escribe una nota"></textarea>
+                        <div class="form-actions">
+                            <button type="submit" id="nota-submit">Agregar nota</button>
+                            <button type="button" id="nota-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
+                        </div>
+                    </form>
+                    <div id="notas-lista" class="lista"></div>
+                </article>
+
+                <article id="tareas-content" class="tab-content">
+                    <form id="tarea-form" class="formulario">
+                        <label for="tarea-texto">Texto de la tarea</label>
+                        <input type="text" id="tarea-texto" required placeholder="Ej: Comprar material">
+                        <label class="tarea-form-hecha"><input type="checkbox" id="tarea-hecha-input"> Hecha</label>
+                        <div class="form-actions">
+                            <button type="submit" id="tarea-submit">Agregar tarea</button>
+                            <button type="button" id="tarea-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
+                        </div>
+                    </form>
+                    <div id="tareas-lista" class="lista"></div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-config" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-config-titulo">
+        <div class="modal-caja">
+            <div class="modal-cabecera">
+                <h2 id="modal-config-titulo">Configuracion y apariencia</h2>
+                <button type="button" id="btn-cerrar-config" class="modal-cerrar" aria-label="Cerrar">×</button>
+            </div>
+            <div class="modal-cuerpo">
+                <p class="modal-ayuda">Titulo, subtitulo, logo (reemplaza SR.M), foto de perfil, fondo y colores se guardan en este navegador (localStorage).</p>
+
+                <label for="cfg-titulo">Titulo principal</label>
+                <input type="text" id="cfg-titulo" autocomplete="off">
+
+                <label for="cfg-subtitulo">Subtitulo</label>
+                <input type="text" id="cfg-subtitulo" autocomplete="off">
+
+                <label for="cfg-tema">Estilo / referencia</label>
+                <select id="cfg-tema">
+                    <option value="claro">Claro</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="minimalista">Minimalista</option>
+                    <option value="rootsEspecial">Roots especial (negro + amarillo/rojo/verde)</option>
+                </select>
+
+                <label for="cfg-fondo-modo">Fondo de la pagina</label>
+                <select id="cfg-fondo-modo">
+                    <option value="color">Color solido</option>
+                    <option value="gradiente">Degradado (dos colores)</option>
+                    <option value="imagen">Imagen (sube archivo)</option>
+                </select>
+
+                <div class="cfg-fila-colores">
+                    <div>
+                        <label for="cfg-fondo1">Color fondo 1</label>
+                        <input type="color" id="cfg-fondo1" value="#0f172a">
+                    </div>
+                    <div>
+                        <label for="cfg-fondo2">Color fondo 2 (degradado)</label>
+                        <input type="color" id="cfg-fondo2" value="#1e293b">
+                    </div>
+                    <div>
+                        <label for="cfg-accent">Color acento (botones activos)</label>
+                        <input type="color" id="cfg-accent" value="#3b82f6">
+                    </div>
+                </div>
+
+                <label for="cfg-file-logo">Logo (cuadrado recomendado, reemplaza imagen actual)</label>
+                <input type="file" id="cfg-file-logo" accept="image/*">
+
+                <label for="cfg-file-perfil">Foto de perfil (circular en la esquina)</label>
+                <input type="file" id="cfg-file-perfil" accept="image/*">
+
+                <label for="cfg-file-fondo">Imagen de fondo (solo si elegiste "Imagen")</label>
+                <input type="file" id="cfg-file-fondo" accept="image/*">
+
+                <p class="modal-ayuda">Variables CSS que ajusta el tema: <code>--bg</code>, <code>--panel</code>, <code>--card</code>, <code>--text</code>, <code>--muted</code>, <code>--accent</code>. El color acento de arriba fuerza <code>--accent</code>.</p>
+            </div>
+            <div class="modal-pie">
+                <button type="button" id="cfg-exportar" class="btn-cancelar">Exportar respaldo JSON</button>
+                <button type="button" id="cfg-restaurar" class="btn-cancelar">Valores por defecto</button>
+                <button type="button" id="cfg-guardar" class="btn-guardar-config">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-auth-compat.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>

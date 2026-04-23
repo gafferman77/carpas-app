@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escuela - Busqueda de Alumnos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f7f8fb; color: #1f2937; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr auto; gap: 12px; }
+    input, button { padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; }
+    button { background: #2563eb; color: #fff; border: none; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+    th { background: #f3f4f6; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .badge-ok {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .badge-no {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #6b7280;
+      font-weight: 700;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Busqueda de Alumnos</h1>
+  <p class="muted">Busca por nombre y apellido del alumno.</p>
+
+  <div class="card">
+    <div class="grid">
+      <input id="query" type="text" placeholder="Ej: Alejandro Rojas" />
+      <button id="searchBtn">Buscar</button>
+    </div>
+    <p id="meta" class="muted"></p>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Alumno</th>
+          <th>Inscripto</th>
+          <th>Telefono</th>
+          <th>Telefono responsable</th>
+          <th>2do responsable (opcional)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const queryInput = document.getElementById("query");
+    const searchBtn = document.getElementById("searchBtn");
+    const tableBody = document.getElementById("tableBody");
+    const meta = document.getElementById("meta");
+
+    async function fetchStudents() {
+      const q = encodeURIComponent(queryInput.value.trim());
+      const res = await fetch(`/api/alumnos?q=${q}`);
+      const data = await res.json();
+      renderRows(data.alumnos || []);
+      meta.textContent = `Resultados: ${data.total} | Base actualizada: ${data.generatedAt || "sin importar"}`;
+    }
+
+    function renderRows(rows) {
+      if (!rows.length) {
+        tableBody.innerHTML = `<tr><td colspan="5">No se encontraron alumnos</td></tr>`;
+        return;
+      }
+      tableBody.innerHTML = rows.map((student) => {
+        const alumno = `${student.apellido}, ${student.nombre}`;
+        const badge = student.inscripto
+          ? '<span class="badge-ok">SI</span>'
+          : '<span class="badge-no">NO</span>';
+        return `
+          <tr>
+            <td>${alumno}</td>
+            <td>${badge}</td>
+            <td>${student.telefono || "-"}</td>
+            <td>${student.telefonoResponsable || "-"}</td>
+            <td>${student.telefonoSegundoResponsable || "-"}</td>
+          </tr>`;
+      }).join("");
+    }
+
+    searchBtn.addEventListener("click", fetchStudents);
+    queryInput.addEventListener("keydown", (e) => e.key === "Enter" && fetchStudents());
+
+    fetchStudents();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "agenda-push-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Worker de recordatorios push para Agenda",
+  "main": "server/send-reminders.js",
+  "scripts": {
+    "start": "node server/carpas-web.js",
+    "push:worker": "node server/send-reminders.js",
+    "students:import": "node server/import-inscripciones.js",
+    "students:web": "node server/students-web.js",
+    "carpas:web": "node server/carpas-web.js",
+    "carpas:qrs": "node server/generate-carpas-qr.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.0.0",
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
+  }
+}

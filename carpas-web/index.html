@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carpas ATP / Taller</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fb; color: #1f2937; margin: 0; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    h1, h2 { margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    input, select, textarea, button { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+    textarea { min-height: 90px; resize: vertical; }
+    button { background: #2563eb; color: #fff; border: none; cursor: pointer; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .hidden { display: none; }
+    .parts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+    .parts label { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+    .report { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+    .ok { color: #166534; font-weight: 700; }
+    .err { color: #991b1b; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Sistema de Carpas</h1>
+      <p id="carpaLabel" class="muted"></p>
+    </div>
+
+    <div id="loginCard" class="card">
+      <h2>Ingreso</h2>
+      <div class="row">
+        <div>
+          <label for="role">Rol</label>
+          <select id="role">
+            <option value="ATP">ATP</option>
+            <option value="TALLER">TALLER</option>
+          </select>
+        </div>
+        <div>
+          <label for="key">Palabra clave</label>
+          <input id="key" type="password" placeholder="Clave de acceso" />
+        </div>
+      </div>
+      <br />
+      <button id="loginBtn">Entrar</button>
+      <p id="loginMsg" class="muted"></p>
+    </div>
+
+    <div id="atpCard" class="card hidden">
+      <h2>Formulario ATP - Reportar arreglo</h2>
+      <p class="muted">Marca una o más partes y agrega detalle.</p>
+      <div class="parts">
+        <label><input type="checkbox" value="Frente">Frente</label>
+        <label><input type="checkbox" value="Fondo">Fondo</label>
+        <label><input type="checkbox" value="Lateral izquierdo">Lateral izquierdo</label>
+        <label><input type="checkbox" value="Lateral derecho">Lateral derecho</label>
+        <label><input type="checkbox" value="Sobretecho">Sobretecho</label>
+        <label><input type="checkbox" value="Estructura">Estructura</label>
+      </div>
+      <br />
+      <div class="row">
+        <div>
+          <label for="prioridad">Prioridad</label>
+          <select id="prioridad">
+            <option value="alta">Alta</option>
+            <option value="media" selected>Media</option>
+            <option value="baja">Baja</option>
+          </select>
+        </div>
+        <div>
+          <label for="creadoPor">Reportado por</label>
+          <input id="creadoPor" type="text" placeholder="Nombre de ATP (opcional)" />
+        </div>
+      </div>
+      <br />
+      <label for="detalle">Detalle</label>
+      <textarea id="detalle" placeholder="Describe el problema..."></textarea>
+      <br />
+      <button id="saveAtpBtn">Guardar reporte</button>
+      <p id="atpMsg" class="muted"></p>
+    </div>
+
+    <div id="tallerCard" class="card hidden">
+      <h2>Panel TALLER - Reportes de la carpa</h2>
+      <button id="reloadBtn">Actualizar</button>
+      <br /><br />
+      <div id="reportes"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
