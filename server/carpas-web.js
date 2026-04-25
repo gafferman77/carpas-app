@@ -123,6 +123,32 @@ app.use((req, res, next) => {
 app.get("/index.html", (_req, res) => {
     sendIndexHtml(res);
 });
+
+app.get("/", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carpas</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; line-height: 1.5; }
+    h1 { font-size: 22px; }
+    a { color: #2563eb; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Sistema de Carpas</h1>
+  <p>Esta dirección es la raíz del servidor. El formulario no está acá.</p>
+  <p><strong>Para reportar:</strong> escaneá el QR de la carpa, o abrí una URL como:</p>
+  <p><a href="/carpa/CARPA-001"><code>/carpa/CARPA-001</code></a> (cambiá el número por tu carpa).</p>
+  <p><a href="/health">Comprobar que el servidor responde (/health)</a></p>
+</body>
+</html>`);
+});
+
 app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
 app.get("/health", (_req, res) => {
