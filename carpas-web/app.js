@@ -1,6 +1,7 @@
 (function () {
-    const PARTS_SELECTOR = '.parts input[type="checkbox"]';
+    const POINT_BTN_SELECTOR = ".point-btn[data-point-id]";
     const carpaId = getCarpaId();
+    const reportedSessionKey = `carpaReported:${carpaId}`;
     let access = { role: "", key: "" };
 
     const carpaLabel = document.getElementById("carpaLabel");
@@ -13,16 +14,23 @@
     const loginBtn = document.getElementById("loginBtn");
     const loginMsg = document.getElementById("loginMsg");
 
-    const prioridadInput = document.getElementById("prioridad");
-    const creadoPorInput = document.getElementById("creadoPor");
     const detalleInput = document.getElementById("detalle");
     const saveAtpBtn = document.getElementById("saveAtpBtn");
     const atpMsg = document.getElementById("atpMsg");
+    const selectedPointsLabel = document.getElementById("selectedPointsLabel");
+    const flowClosedBox = document.getElementById("flowClosedBox");
+    const closeTabBtn = document.getElementById("closeTabBtn");
 
     const reloadBtn = document.getElementById("reloadBtn");
     const reportesBox = document.getElementById("reportes");
 
+    if (hasAlreadyReportedInSession()) {
+        window.location.replace("/cierre.html");
+        return;
+    }
+
     carpaLabel.textContent = carpaId ? `Carpa detectada: ${carpaId}` : "Carpa no detectada";
+    bindPointSelector();
     if (!carpaId) {
         loginMsg.textContent = "URL invalida: falta ID de carpa.";
         loginMsg.className = "err";
@@ -61,13 +69,16 @@
     });
 
     saveAtpBtn.addEventListener("click", async () => {
+        if (saveAtpBtn.disabled) {
+            return;
+        }
+        const puntos = getSelectedPoints();
         const payload = {
             role: access.role,
             key: access.key,
-            partes: getCheckedParts(),
-            prioridad: prioridadInput.value,
-            detalle: detalleInput.value.trim(),
-            creadoPor: creadoPorInput.value.trim()
+            puntos,
+            partes: puntos,
+            detalle: detalleInput.value.trim()
         };
 
         const saved = await postJson(`/api/carpas/${encodeURIComponent(carpaId)}/reportes`, payload);
@@ -79,13 +90,14 @@
         atpMsg.textContent = `Reporte guardado correctamente (${saved.reporteId}).`;
         atpMsg.className = "ok";
         detalleInput.value = "";
-        creadoPorInput.value = "";
-        document.querySelectorAll(PARTS_SELECTOR).forEach((item) => {
-            item.checked = false;
-        });
+        clearSelectedPoints();
+        closeAtpFlow();
     });
 
     reloadBtn.addEventListener("click", loadReportes);
+    if (closeTabBtn) {
+        closeTabBtn.addEventListener("click", closeCurrentTab);
+    }
 
     async function loadReportes() {
         reportesBox.innerHTML = "<p class='muted'>Cargando reportes...</p>";
@@ -109,13 +121,13 @@
 
     async function saveReporteUpdate(event) {
         const reporteId = event.currentTarget.getAttribute("data-save-reporte");
-        const estadoInput = document.querySelector(`[data-estado='${reporteId}']`);
+        const destinoInput = document.querySelector(`[data-destino='${reporteId}']`);
         const notaInput = document.querySelector(`[data-nota='${reporteId}']`);
         const msg = document.querySelector(`[data-msg='${reporteId}']`);
         const body = {
             role: access.role,
             key: access.key,
-            estado: estadoInput.value,
+            destino: destinoInput.value,
             tallerNota: notaInput.value.trim()
         };
         const updated = await patchJson(`/api/reportes/${encodeURIComponent(reporteId)}`, body);
@@ -129,20 +141,26 @@
     }
 
     function renderReporte(item) {
-        const partes = (item.partes || []).join(", ") || "(sin partes)";
+        const puntos = item.puntos || item.partes || [];
+        const cuerpo = puntos
+            .filter((p) => String(p || "").toLowerCase().includes("cuerpo"))
+            .map(formatPointLabel);
+        const sobretecho = puntos
+            .filter((p) => String(p || "").toLowerCase().includes("sobretecho"))
+            .map(formatPointLabel);
+        const destino = item.destino || item.estado || "taller/estanteria";
         return `
             <div class="report">
                 <p><strong>ID:</strong> ${item.id}</p>
                 <p><strong>Fecha:</strong> ${item.createdAt || "-"}</p>
-                <p><strong>Partes:</strong> ${partes}</p>
-                <p><strong>Detalle:</strong> ${item.detalle || "-"}</p>
-                <p><strong>Prioridad:</strong> ${item.prioridad || "-"}</p>
-                <p><strong>ATP:</strong> ${item.creadoPor || "-"}</p>
-                <label>Estado</label>
-                <select data-estado="${item.id}">
-                    <option value="pendiente" ${item.estado === "pendiente" ? "selected" : ""}>pendiente</option>
-                    <option value="en reparacion" ${item.estado === "en reparacion" ? "selected" : ""}>en reparacion</option>
-                    <option value="reparada" ${item.estado === "reparada" ? "selected" : ""}>reparada</option>
+                <p><strong>CUERPO:</strong> ${cuerpo.join(", ") || "(sin puntos)"}</p>
+                <p><strong>SOBRETECHO:</strong> ${sobretecho.join(", ") || "(sin puntos)"}</p>
+                <p><strong>Observaciones:</strong> ${item.detalle || "-"}</p>
+                <label>Destino</label>
+                <select data-destino="${item.id}">
+                    <option value="taller/estanteria" ${destino === "taller/estanteria" ? "selected" : ""}>taller/estanteria</option>
+                    <option value="desguase" ${destino === "desguase" ? "selected" : ""}>desguase</option>
+                    <option value="campo" ${destino === "campo" ? "selected" : ""}>campo</option>
                 </select>
                 <br /><br />
                 <label>Nota taller</label>
@@ -154,14 +172,86 @@
         `;
     }
 
-    function getCheckedParts() {
-        const selected = [];
-        document.querySelectorAll(PARTS_SELECTOR).forEach((item) => {
-            if (item.checked) {
-                selected.push(item.value);
-            }
+    function bindPointSelector() {
+        document.querySelectorAll(POINT_BTN_SELECTOR).forEach((btn) => {
+            btn.addEventListener("click", () => {
+                btn.classList.toggle("is-selected");
+                renderSelectedPointsSummary();
+            });
         });
-        return selected;
+        renderSelectedPointsSummary();
+    }
+
+    function getSelectedPoints() {
+        return Array.from(document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`))
+            .map((btn) => String(btn.getAttribute("data-point-id") || "").trim().toLowerCase())
+            .filter(Boolean);
+    }
+
+    function clearSelectedPoints() {
+        document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`).forEach((btn) => {
+            btn.classList.remove("is-selected");
+        });
+        renderSelectedPointsSummary();
+    }
+
+    function renderSelectedPointsSummary() {
+        if (!selectedPointsLabel) {
+            return;
+        }
+        const selected = Array.from(document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`));
+        const cuerpo = selected
+            .filter((btn) => String(btn.getAttribute("data-point-id") || "").startsWith("cuerpo_"))
+            .map((btn) => formatPointLabel(btn.getAttribute("data-point-id")));
+        const sobretecho = selected
+            .filter((btn) => String(btn.getAttribute("data-point-id") || "").startsWith("sobretecho_"))
+            .map((btn) => formatPointLabel(btn.getAttribute("data-point-id")));
+        selectedPointsLabel.innerHTML = `
+            <span class="line"><strong>CUERPO:</strong> ${cuerpo.join(", ") || "ninguno"}</span>
+            <span class="line"><strong>SOBRETECHO:</strong> ${sobretecho.join(", ") || "ninguno"}</span>
+        `;
+    }
+
+    function formatPointLabel(raw) {
+        const text = String(raw || "").trim();
+        const match = text.match(/^(sobretecho|cuerpo)_p(\d+)$/i);
+        if (!match) {
+            return text || "-";
+        }
+        const zone = match[1].toLowerCase() === "sobretecho" ? "Sobretecho" : "Cuerpo";
+        return `${zone} P${match[2]}`;
+    }
+
+    function closeAtpFlow() {
+        markReportedInSession();
+        saveAtpBtn.disabled = true;
+        saveAtpBtn.textContent = "Reporte enviado";
+        atpMsg.textContent = "Gracias por el informe.";
+        atpMsg.className = "ok";
+        if (flowClosedBox) {
+            flowClosedBox.classList.remove("hidden");
+        }
+        setTimeout(closeCurrentTab, 700);
+    }
+
+    function closeCurrentTab() {
+        window.close();
+        const bust = Date.now();
+        window.location.replace(`/cierre.html?v=${bust}`);
+    }
+
+    function hasAlreadyReportedInSession() {
+        if (!carpaId || !window.sessionStorage) {
+            return false;
+        }
+        return window.sessionStorage.getItem(reportedSessionKey) === "1";
+    }
+
+    function markReportedInSession() {
+        if (!carpaId || !window.sessionStorage) {
+            return;
+        }
+        window.sessionStorage.setItem(reportedSessionKey, "1");
     }
 
     function getCarpaId() {

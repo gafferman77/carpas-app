@@ -8,10 +8,41 @@ const admin = require("firebase-admin");
 const PORT = Number(process.env.PORT || process.env.CARPAS_PORT || 5050);
 const ATP_KEY = String(process.env.ATP_KEY || "faro");
 const TALLER_KEY = String(process.env.TALLER_KEY || "taller");
+const APP_VERSION = String(
+    process.env.APP_VERSION ||
+        process.env.RENDER_GIT_COMMIT ||
+        process.env.COMMIT_REF ||
+        Date.now()
+);
 const SERVICE_ACCOUNT_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
     ? path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS)
     : path.resolve(process.cwd(), "agenda-roots-v2-firebase-adminsdk-fbsvc-80840e73b8.json");
 const PUBLIC_DIR = path.resolve(process.cwd(), "carpas-web");
+const INDEX_HTML_PATH = path.resolve(PUBLIC_DIR, "index.html");
+
+let indexHtmlTemplate = "";
+
+function readIndexHtmlTemplate() {
+    if (!indexHtmlTemplate) {
+        indexHtmlTemplate = fs.readFileSync(INDEX_HTML_PATH, "utf8");
+    }
+    return indexHtmlTemplate;
+}
+
+function buildIndexHtml() {
+    return readIndexHtmlTemplate().replace(/__ASSET_VERSION__/g, APP_VERSION);
+}
+
+function sendIndexHtml(res) {
+    const html = buildIndexHtml();
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "private, no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Vary", "*");
+    res.setHeader("Surrogate-Control", "no-store");
+    res.status(200).send(html);
+}
 
 function getLocalIp() {
     const nets = os.networkInterfaces();
@@ -67,19 +98,44 @@ function asParts(value) {
     if (!Array.isArray(value)) {
         return [];
     }
-    return value.map((v) => String(v || "").trim()).filter(Boolean);
+    const cleaned = value.map((v) => String(v || "").trim()).filter(Boolean);
+    return Array.from(new Set(cleaned));
+}
+
+function asPuntos(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    const cleaned = value
+        .map((v) => String(v || "").trim().toLowerCase())
+        .filter((v) => /^(sobretecho|cuerpo)_p\d+$/i.test(v));
+    return Array.from(new Set(cleaned));
 }
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(PUBLIC_DIR));
+app.use((req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+});
+app.get("/index.html", (_req, res) => {
+    sendIndexHtml(res);
+});
+app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
 app.get("/health", (_req, res) => {
     res.json({ ok: true });
 });
 
 app.get("/carpa/:carpaId", (_req, res) => {
-    res.sendFile(path.resolve(PUBLIC_DIR, "index.html"));
+    const requestedVersion = String(_req.query?.v || "").trim();
+    if (!requestedVersion) {
+        const safeCarpaId = String(_req.params?.carpaId || "").trim().toUpperCase();
+        return res.redirect(302, `/carpa/${encodeURIComponent(safeCarpaId)}?v=${encodeURIComponent(APP_VERSION)}`);
+    }
+    sendIndexHtml(res);
 });
 
 app.post("/api/auth", (req, res) => {
@@ -97,16 +153,17 @@ app.post("/api/carpas/:carpaId/reportes", async (req, res) => {
     }
 
     const carpaId = String(req.params.carpaId || "").trim().toUpperCase();
+    const puntos = asPuntos(req.body?.puntos);
     const partes = asParts(req.body?.partes);
+    const legacyAsPuntos = asPuntos(partes);
+    const puntosFinal = puntos.length ? puntos : (legacyAsPuntos.length ? legacyAsPuntos : partes);
     const detalle = String(req.body?.detalle || "").trim();
-    const prioridad = String(req.body?.prioridad || "media").trim().toLowerCase();
-    const creadoPor = String(req.body?.creadoPor || "ATP").trim();
 
     if (!carpaId) {
         return res.status(400).json({ error: "Carpa invalida" });
     }
-    if (!partes.length && !detalle) {
-        return res.status(400).json({ error: "Debes indicar parte o detalle" });
+    if (!puntosFinal.length && !detalle) {
+        return res.status(400).json({ error: "Debes indicar puntos o detalle" });
     }
 
     try {
@@ -114,13 +171,12 @@ app.post("/api/carpas/:carpaId/reportes", async (req, res) => {
         const now = new Date().toISOString();
         const docRef = await db.collection("carpasReportes").add({
             carpaId,
-            partes,
+            puntos: puntosFinal,
+            partes: puntosFinal,
             detalle,
-            prioridad,
-            creadoPor,
             createdAt: now,
             updatedAt: now,
-            estado: "pendiente",
+            destino: "taller/estanteria",
             tallerNota: ""
         });
         await db.collection("carpas").doc(carpaId).set(
@@ -175,18 +231,18 @@ app.patch("/api/reportes/:reporteId", async (req, res) => {
     }
 
     const reporteId = String(req.params.reporteId || "").trim();
-    const estado = String(req.body?.estado || "").trim().toLowerCase();
+    const destino = String(req.body?.destino || req.body?.estado || "").trim().toLowerCase();
     const tallerNota = String(req.body?.tallerNota || "").trim();
-    const allowed = new Set(["pendiente", "en reparacion", "reparada"]);
-    if (!allowed.has(estado)) {
-        return res.status(400).json({ error: "Estado invalido" });
+    const allowed = new Set(["taller/estanteria", "desguase", "campo"]);
+    if (!allowed.has(destino)) {
+        return res.status(400).json({ error: "Destino invalido" });
     }
 
     try {
         const db = await ensureDb();
         await db.collection("carpasReportes").doc(reporteId).set(
             {
-                estado,
+                destino,
                 tallerNota,
                 updatedAt: new Date().toISOString()
             },

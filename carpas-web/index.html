@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>Carpas ATP / Taller</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f7fb; color: #1f2937; margin: 0; }
@@ -15,11 +17,59 @@
     button { background: #2563eb; color: #fff; border: none; cursor: pointer; }
     .muted { color: #6b7280; font-size: 13px; }
     .hidden { display: none; }
-    .parts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
-    .parts label { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+    .points-help { margin: 0 0 10px; }
+    .point-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .point-group { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; }
+    .point-group h3 { margin: 0 0 10px; font-size: 16px; text-align: center; }
+    .diagram { position: relative; background: #fff; border-radius: 8px; }
+    .diagram svg { width: 100%; height: auto; display: block; }
+    .diagram line, .diagram polyline, .diagram polygon, .diagram path {
+      stroke: #111827;
+      stroke-width: 2;
+      fill: none;
+    }
+    .point-btn {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      transform: translate(-50%, -50%);
+      padding: 0;
+      border: 2px solid #0ea5e9;
+      border-radius: 999px;
+      background: #fff;
+      color: transparent;
+      overflow: hidden;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .point-btn:hover { border-color: #0284c7; }
+    .point-btn:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+    .point-btn.is-selected { background: #0284c7; border-color: #0369a1; }
+    .selected-points {
+      margin-top: 10px;
+      padding: 8px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #334155;
+      min-height: 18px;
+    }
+    .selected-points .line { display: block; margin-bottom: 3px; }
     .report { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
     .ok { color: #166534; font-weight: 700; }
     .err { color: #991b1b; font-weight: 700; }
+    .success-box {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .success-box h3 { margin: 0 0 8px; }
+    @media (max-width: 720px) {
+      .point-groups { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -51,36 +101,59 @@
 
     <div id="atpCard" class="card hidden">
       <h2>Formulario ATP - Reportar arreglo</h2>
-      <p class="muted">Marca una o más partes y agrega detalle.</p>
-      <div class="parts">
-        <label><input type="checkbox" value="Frente">Frente</label>
-        <label><input type="checkbox" value="Fondo">Fondo</label>
-        <label><input type="checkbox" value="Lateral izquierdo">Lateral izquierdo</label>
-        <label><input type="checkbox" value="Lateral derecho">Lateral derecho</label>
-        <label><input type="checkbox" value="Sobretecho">Sobretecho</label>
-        <label><input type="checkbox" value="Estructura">Estructura</label>
-      </div>
-      <br />
-      <div class="row">
-        <div>
-          <label for="prioridad">Prioridad</label>
-          <select id="prioridad">
-            <option value="alta">Alta</option>
-            <option value="media" selected>Media</option>
-            <option value="baja">Baja</option>
-          </select>
+      <p class="muted points-help">marque en la carpa el o los problemas a solucionar</p>
+      <div class="point-groups">
+        <div class="point-group">
+          <h3>Sobretecho</h3>
+          <div class="diagram" data-zone="Sobretecho" aria-label="Esquema de sobretecho">
+            <svg viewBox="0 0 320 220" role="img">
+              <rect x="55" y="55" width="210" height="110"></rect>
+              <line x1="160" y1="55" x2="160" y2="165"></line>
+            </svg>
+            <button type="button" class="point-btn" style="left:23.44%;top:34.09%;" data-point-id="sobretecho_p1" data-point-label="Sobretecho P1" aria-label="Sobretecho P1">Sobretecho P1</button>
+            <button type="button" class="point-btn" style="left:76.56%;top:34.09%;" data-point-id="sobretecho_p2" data-point-label="Sobretecho P2" aria-label="Sobretecho P2">Sobretecho P2</button>
+            <button type="button" class="point-btn" style="left:23.44%;top:65.91%;" data-point-id="sobretecho_p3" data-point-label="Sobretecho P3" aria-label="Sobretecho P3">Sobretecho P3</button>
+            <button type="button" class="point-btn" style="left:76.56%;top:65.91%;" data-point-id="sobretecho_p4" data-point-label="Sobretecho P4" aria-label="Sobretecho P4">Sobretecho P4</button>
+            <button type="button" class="point-btn" style="left:50%;top:50%;" data-point-id="sobretecho_p5" data-point-label="Sobretecho P5" aria-label="Sobretecho P5">Sobretecho P5</button>
+          </div>
         </div>
-        <div>
-          <label for="creadoPor">Reportado por</label>
-          <input id="creadoPor" type="text" placeholder="Nombre de ATP (opcional)" />
+        <div class="point-group">
+          <h3>Cuerpo</h3>
+          <div class="diagram" data-zone="Cuerpo" aria-label="Esquema de cuerpo">
+            <svg viewBox="0 0 320 220" role="img">
+              <line x1="160" y1="35" x2="85" y2="95"></line>
+              <line x1="160" y1="35" x2="235" y2="105"></line>
+              <line x1="85" y1="95" x2="70" y2="165"></line>
+              <line x1="235" y1="105" x2="225" y2="165"></line>
+              <line x1="70" y1="165" x2="225" y2="165"></line>
+              <line x1="160" y1="120" x2="160" y2="165"></line>
+              <line x1="160" y1="120" x2="70" y2="165"></line>
+              <line x1="160" y1="120" x2="225" y2="165"></line>
+            </svg>
+            <button type="button" class="point-btn" style="left:50%;top:15.91%;" data-point-id="cuerpo_p1" data-point-label="Cuerpo P1" aria-label="Cuerpo P1">Cuerpo P1</button>
+            <button type="button" class="point-btn" style="left:26.56%;top:43.18%;" data-point-id="cuerpo_p2" data-point-label="Cuerpo P2" aria-label="Cuerpo P2">Cuerpo P2</button>
+            <button type="button" class="point-btn" style="left:73.44%;top:47.73%;" data-point-id="cuerpo_p3" data-point-label="Cuerpo P3" aria-label="Cuerpo P3">Cuerpo P3</button>
+            <button type="button" class="point-btn" style="left:21.88%;top:75%;" data-point-id="cuerpo_p4" data-point-label="Cuerpo P4" aria-label="Cuerpo P4">Cuerpo P4</button>
+            <button type="button" class="point-btn" style="left:70.31%;top:75%;" data-point-id="cuerpo_p5" data-point-label="Cuerpo P5" aria-label="Cuerpo P5">Cuerpo P5</button>
+            <button type="button" class="point-btn" style="left:50%;top:54.55%;" data-point-id="cuerpo_p6" data-point-label="Cuerpo P6" aria-label="Cuerpo P6">Cuerpo P6</button>
+          </div>
         </div>
       </div>
+      <p id="selectedPointsLabel" class="selected-points">
+        <span class="line"><strong>CUERPO:</strong> ninguno</span>
+        <span class="line"><strong>SOBRETECHO:</strong> ninguno</span>
+      </p>
       <br />
-      <label for="detalle">Detalle</label>
+      <label for="detalle">Observaciones</label>
       <textarea id="detalle" placeholder="Describe el problema..."></textarea>
       <br />
       <button id="saveAtpBtn">Guardar reporte</button>
       <p id="atpMsg" class="muted"></p>
+      <div id="flowClosedBox" class="success-box hidden">
+        <h3>Gracias por el informe.</h3>
+        <p>Este reporte ya fue enviado para la carpa escaneada. Puede cerrar esta pestaña.</p>
+        <button id="closeTabBtn" type="button">Cerrar pestaña</button>
+      </div>
     </div>
 
     <div id="tallerCard" class="card hidden">
@@ -91,6 +164,6 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=__ASSET_VERSION__"></script>
 </body>
 </html>
