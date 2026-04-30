@@ -1,199 +1,169 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda</title>
-    <link rel="icon" type="image/png" href="./assets/favicon.png">
-    <link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Carpas ATP / Taller</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fb; color: #1f2937; margin: 0; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    h1, h2 { margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    input, select, textarea, button { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+    textarea { min-height: 90px; resize: vertical; }
+    button { background: #2563eb; color: #fff; border: none; cursor: pointer; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .hidden { display: none; }
+    .points-help { margin: 0 0 10px; }
+    .point-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .point-group { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; }
+    .point-group h3 { margin: 0 0 10px; font-size: 16px; text-align: center; }
+    .diagram { position: relative; background: #fff; border-radius: 8px; }
+    .diagram svg { width: 100%; height: auto; display: block; }
+    .diagram line, .diagram polyline, .diagram polygon, .diagram path {
+      stroke: #111827;
+      stroke-width: 2;
+      fill: none;
+    }
+    .point-btn {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      transform: translate(-50%, -50%);
+      padding: 0;
+      border: 2px solid #0ea5e9;
+      border-radius: 999px;
+      background: #fff;
+      color: transparent;
+      overflow: hidden;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .point-btn:hover { border-color: #0284c7; }
+    .point-btn:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+    .point-btn.is-selected { background: #0284c7; border-color: #0369a1; }
+    .selected-points {
+      margin-top: 10px;
+      padding: 8px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #334155;
+      min-height: 18px;
+    }
+    .selected-points .line { display: block; margin-bottom: 3px; }
+    .report { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+    .ok { color: #166534; font-weight: 700; }
+    .err { color: #991b1b; font-weight: 700; }
+    .success-box {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .success-box h3 { margin: 0 0 8px; }
+    @media (max-width: 720px) {
+      .point-groups { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-layout">
-            <div class="header-brand">
-                <div class="marca-superior">
-                    <div class="marca-izq">
-                        <img id="header-logo" class="logo-marca" src="./assets/logo-roots.png" alt="Logo Roots Studio" width="72" height="72">
-                        <div class="marca-textos">
-                            <h1 id="app-titulo">Agenda personalizada</h1>
-                            <p id="app-subtitulo">La mente crea realidades</p>
-                        </div>
-                    </div>
-                    <div class="marca-acciones">
-                        <img id="header-foto-perfil" class="header-foto-perfil hidden" alt="Foto de perfil" width="48" height="48">
-                        <button type="button" id="btn-abrir-config" class="btn-config" title="Configuracion y apariencia">Ajustes</button>
-                    </div>
-                </div>
-            </div>
-            <aside class="header-widgets" aria-label="Hora y clima">
-                <div class="widget">
-                    <div class="widget-head">Hora y clima · Buenos Aires</div>
-                    <div id="widget-reloj" class="widget-reloj">--:--</div>
-                    <div id="widget-clima-body" class="widget-clima">Cargando pronostico...</div>
-                </div>
-            </aside>
-        </div>
-    </header>
-
-    <main class="app-container">
-        <section class="calendario-container">
-            <div class="toolbar-superior">
-                <div class="botones-mes">
-                    <button id="prev-month" type="button">←</button>
-                    <button id="today-btn" type="button">Hoy</button>
-                    <button id="next-month" type="button">→</button>
-                </div>
-                <div class="vistatoggle">
-                    <button id="view-day" class="view-btn active" type="button">Vista diaria</button>
-                    <button id="view-week" class="view-btn" type="button">Vista semanal</button>
-                </div>
-            </div>
-
-            <div class="cabecera-mes">
-                <h2 id="nombre-mes"></h2>
-            </div>
-            <div id="month-grid"></div>
-            <div id="week-view" class="week-view hidden"></div>
-        </section>
-
-        <section class="panel-derecho">
-            <h3 id="selected-date-title"></h3>
-
-            <div class="pestanas">
-                <button class="pestana activa" data-tab="eventos" type="button">Eventos</button>
-                <button class="pestana" data-tab="notas" type="button">Notas</button>
-                <button class="pestana" data-tab="tareas" type="button">Tareas</button>
-            </div>
-
-            <div class="estado-vacio" id="estado-vacio">
-                Selecciona un dia para ver o crear contenido.
-            </div>
-
-            <div id="panel-content" class="panel-content hidden">
-                <article id="eventos-content" class="tab-content activo">
-                    <form id="evento-form" class="formulario">
-                        <label for="evento-titulo">Titulo</label>
-                        <input type="text" id="evento-titulo" required placeholder="Ej: Reunion escolar">
-
-                        <label for="evento-asunto">Asunto</label>
-                        <select id="evento-asunto" required></select>
-
-                        <label for="evento-hora">Hora</label>
-                        <input type="time" id="evento-hora" required>
-
-                        <label for="evento-descripcion">Descripcion</label>
-                        <textarea id="evento-descripcion" rows="2" placeholder="Detalles, lugar, etc. (opcional)"></textarea>
-
-                        <div class="form-actions">
-                            <button type="submit" id="evento-submit">Agregar evento</button>
-                            <button type="button" id="evento-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
-                            <select id="import-google-range" class="import-range-select" title="Rango de importacion Google Calendar">
-                                <option value="dia">Importar dia</option>
-                                <option value="semana">Importar semana</option>
-                                <option value="mes">Importar mes</option>
-                            </select>
-                            <button type="button" id="import-google-calendar" class="btn-cancelar">Importar Google Calendar</button>
-                        </div>
-                    </form>
-                    <div id="eventos-lista" class="lista"></div>
-                </article>
-
-                <article id="notas-content" class="tab-content">
-                    <form id="nota-form" class="formulario">
-                        <label for="nota-texto">Nota</label>
-                        <textarea id="nota-texto" rows="3" required placeholder="Escribe una nota"></textarea>
-                        <div class="form-actions">
-                            <button type="submit" id="nota-submit">Agregar nota</button>
-                            <button type="button" id="nota-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
-                        </div>
-                    </form>
-                    <div id="notas-lista" class="lista"></div>
-                </article>
-
-                <article id="tareas-content" class="tab-content">
-                    <form id="tarea-form" class="formulario">
-                        <label for="tarea-texto">Texto de la tarea</label>
-                        <input type="text" id="tarea-texto" required placeholder="Ej: Comprar material">
-                        <label class="tarea-form-hecha"><input type="checkbox" id="tarea-hecha-input"> Hecha</label>
-                        <div class="form-actions">
-                            <button type="submit" id="tarea-submit">Agregar tarea</button>
-                            <button type="button" id="tarea-cancelar" class="btn-cancelar hidden">Cancelar edicion</button>
-                        </div>
-                    </form>
-                    <div id="tareas-lista" class="lista"></div>
-                </article>
-            </div>
-        </section>
-    </main>
-
-    <div id="modal-config" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-config-titulo">
-        <div class="modal-caja">
-            <div class="modal-cabecera">
-                <h2 id="modal-config-titulo">Configuracion y apariencia</h2>
-                <button type="button" id="btn-cerrar-config" class="modal-cerrar" aria-label="Cerrar">×</button>
-            </div>
-            <div class="modal-cuerpo">
-                <p class="modal-ayuda">Titulo, subtitulo, logo (reemplaza SR.M), foto de perfil, fondo y colores se guardan en este navegador (localStorage).</p>
-
-                <label for="cfg-titulo">Titulo principal</label>
-                <input type="text" id="cfg-titulo" autocomplete="off">
-
-                <label for="cfg-subtitulo">Subtitulo</label>
-                <input type="text" id="cfg-subtitulo" autocomplete="off">
-
-                <label for="cfg-tema">Estilo / referencia</label>
-                <select id="cfg-tema">
-                    <option value="claro">Claro</option>
-                    <option value="vintage">Vintage</option>
-                    <option value="minimalista">Minimalista</option>
-                    <option value="rootsEspecial">Roots especial (negro + amarillo/rojo/verde)</option>
-                </select>
-
-                <label for="cfg-fondo-modo">Fondo de la pagina</label>
-                <select id="cfg-fondo-modo">
-                    <option value="color">Color solido</option>
-                    <option value="gradiente">Degradado (dos colores)</option>
-                    <option value="imagen">Imagen (sube archivo)</option>
-                </select>
-
-                <div class="cfg-fila-colores">
-                    <div>
-                        <label for="cfg-fondo1">Color fondo 1</label>
-                        <input type="color" id="cfg-fondo1" value="#0f172a">
-                    </div>
-                    <div>
-                        <label for="cfg-fondo2">Color fondo 2 (degradado)</label>
-                        <input type="color" id="cfg-fondo2" value="#1e293b">
-                    </div>
-                    <div>
-                        <label for="cfg-accent">Color acento (botones activos)</label>
-                        <input type="color" id="cfg-accent" value="#3b82f6">
-                    </div>
-                </div>
-
-                <label for="cfg-file-logo">Logo (cuadrado recomendado, reemplaza imagen actual)</label>
-                <input type="file" id="cfg-file-logo" accept="image/*">
-
-                <label for="cfg-file-perfil">Foto de perfil (circular en la esquina)</label>
-                <input type="file" id="cfg-file-perfil" accept="image/*">
-
-                <label for="cfg-file-fondo">Imagen de fondo (solo si elegiste "Imagen")</label>
-                <input type="file" id="cfg-file-fondo" accept="image/*">
-
-                <p class="modal-ayuda">Variables CSS que ajusta el tema: <code>--bg</code>, <code>--panel</code>, <code>--card</code>, <code>--text</code>, <code>--muted</code>, <code>--accent</code>. El color acento de arriba fuerza <code>--accent</code>.</p>
-            </div>
-            <div class="modal-pie">
-                <button type="button" id="cfg-exportar" class="btn-cancelar">Exportar respaldo JSON</button>
-                <button type="button" id="cfg-restaurar" class="btn-cancelar">Valores por defecto</button>
-                <button type="button" id="cfg-guardar" class="btn-guardar-config">Guardar</button>
-            </div>
-        </div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Sistema de Carpas</h1>
+      <p id="carpaLabel" class="muted"></p>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-messaging-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.7.1/firebase-auth-compat.js"></script>
-    <script src="./app.js"></script>
+    <div id="loginCard" class="card">
+      <h2>Ingreso</h2>
+      <div class="row">
+        <div>
+          <label for="role">Rol</label>
+          <select id="role">
+            <option value="ATP">ATP</option>
+            <option value="TALLER">TALLER</option>
+          </select>
+        </div>
+        <div>
+          <label for="key">Palabra clave</label>
+          <input id="key" type="password" placeholder="Clave de acceso" />
+        </div>
+      </div>
+      <br />
+      <button id="loginBtn">Entrar</button>
+      <p id="loginMsg" class="muted"></p>
+    </div>
+
+    <div id="atpCard" class="card hidden">
+      <h2>Formulario ATP - Reportar arreglo</h2>
+      <p class="muted points-help">marque en la carpa el o los problemas a solucionar</p>
+      <div class="point-groups">
+        <div class="point-group">
+          <h3>Sobretecho</h3>
+          <div class="diagram" data-zone="Sobretecho" aria-label="Esquema de sobretecho">
+            <svg viewBox="0 0 320 220" role="img">
+              <rect x="55" y="55" width="210" height="110"></rect>
+              <line x1="160" y1="55" x2="160" y2="165"></line>
+            </svg>
+            <button type="button" class="point-btn" style="left:23.44%;top:34.09%;" data-point-id="sobretecho_p1" data-point-label="Sobretecho P1" aria-label="Sobretecho P1">Sobretecho P1</button>
+            <button type="button" class="point-btn" style="left:76.56%;top:34.09%;" data-point-id="sobretecho_p2" data-point-label="Sobretecho P2" aria-label="Sobretecho P2">Sobretecho P2</button>
+            <button type="button" class="point-btn" style="left:23.44%;top:65.91%;" data-point-id="sobretecho_p3" data-point-label="Sobretecho P3" aria-label="Sobretecho P3">Sobretecho P3</button>
+            <button type="button" class="point-btn" style="left:76.56%;top:65.91%;" data-point-id="sobretecho_p4" data-point-label="Sobretecho P4" aria-label="Sobretecho P4">Sobretecho P4</button>
+            <button type="button" class="point-btn" style="left:50%;top:50%;" data-point-id="sobretecho_p5" data-point-label="Sobretecho P5" aria-label="Sobretecho P5">Sobretecho P5</button>
+          </div>
+        </div>
+        <div class="point-group">
+          <h3>Cuerpo</h3>
+          <div class="diagram" data-zone="Cuerpo" aria-label="Esquema de cuerpo">
+            <svg viewBox="0 0 320 220" role="img">
+              <line x1="160" y1="35" x2="85" y2="95"></line>
+              <line x1="160" y1="35" x2="235" y2="105"></line>
+              <line x1="85" y1="95" x2="70" y2="165"></line>
+              <line x1="235" y1="105" x2="225" y2="165"></line>
+              <line x1="70" y1="165" x2="225" y2="165"></line>
+              <line x1="160" y1="120" x2="160" y2="165"></line>
+              <line x1="160" y1="120" x2="70" y2="165"></line>
+              <line x1="160" y1="120" x2="225" y2="165"></line>
+            </svg>
+            <button type="button" class="point-btn" style="left:50%;top:15.91%;" data-point-id="cuerpo_p1" data-point-label="Cuerpo P1" aria-label="Cuerpo P1">Cuerpo P1</button>
+            <button type="button" class="point-btn" style="left:26.56%;top:43.18%;" data-point-id="cuerpo_p2" data-point-label="Cuerpo P2" aria-label="Cuerpo P2">Cuerpo P2</button>
+            <button type="button" class="point-btn" style="left:73.44%;top:47.73%;" data-point-id="cuerpo_p3" data-point-label="Cuerpo P3" aria-label="Cuerpo P3">Cuerpo P3</button>
+            <button type="button" class="point-btn" style="left:21.88%;top:75%;" data-point-id="cuerpo_p4" data-point-label="Cuerpo P4" aria-label="Cuerpo P4">Cuerpo P4</button>
+            <button type="button" class="point-btn" style="left:70.31%;top:75%;" data-point-id="cuerpo_p5" data-point-label="Cuerpo P5" aria-label="Cuerpo P5">Cuerpo P5</button>
+            <button type="button" class="point-btn" style="left:50%;top:54.55%;" data-point-id="cuerpo_p6" data-point-label="Cuerpo P6" aria-label="Cuerpo P6">Cuerpo P6</button>
+          </div>
+        </div>
+      </div>
+      <p id="selectedPointsLabel" class="selected-points">
+        <span class="line"><strong>CUERPO:</strong> ninguno</span>
+        <span class="line"><strong>SOBRETECHO:</strong> ninguno</span>
+      </p>
+      <br />
+      <label for="detalle">Observaciones</label>
+      <textarea id="detalle" placeholder="Describe el problema..."></textarea>
+      <br />
+      <button id="saveAtpBtn">Guardar reporte</button>
+      <p id="atpMsg" class="muted"></p>
+      <div id="flowClosedBox" class="success-box hidden">
+        <h3>Gracias por el informe.</h3>
+        <p>Este reporte ya fue enviado para la carpa escaneada. Puede cerrar esta pestaña.</p>
+        <button id="closeTabBtn" type="button">Cerrar pestaña</button>
+      </div>
+    </div>
+
+    <div id="tallerCard" class="card hidden">
+      <h2>Panel TALLER - Reportes de la carpa</h2>
+      <button id="reloadBtn">Actualizar</button>
+      <br /><br />
+      <div id="reportes"></div>
+    </div>
+  </div>
+
+  <script src="/app.js?v=__ASSET_VERSION__"></script>
 </body>
 </html>
