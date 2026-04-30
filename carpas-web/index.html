@@ -10,7 +10,13 @@
     body { font-family: Arial, sans-serif; background: #f5f7fb; color: #1f2937; margin: 0; }
     .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    h1, h2 { margin: 0 0 12px; }
+
+    /* Header card con nombre de carpa grande */
+    .header-card { background: #1e3a5f; color: #fff; border: none; padding: 20px; }
+    .header-card h1 { margin: 0 0 4px; font-size: 22px; color: #93c5fd; font-weight: 600; }
+    .header-card .carpa-nombre { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: 1px; margin: 0; }
+
+    h2 { margin: 0 0 12px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     input, select, textarea, button { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
     textarea { min-height: 90px; resize: vertical; }
@@ -45,6 +51,17 @@
     .point-btn:hover { border-color: #0284c7; }
     .point-btn:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
     .point-btn.is-selected { background: #0284c7; border-color: #0369a1; }
+
+    /* Punto de cierre - color diferente para distinguirlo */
+    .point-btn[data-point-id="cuerpo_p7"] {
+      border-color: #f59e0b;
+      background: #fef3c7;
+    }
+    .point-btn[data-point-id="cuerpo_p7"].is-selected {
+      background: #f59e0b;
+      border-color: #d97706;
+    }
+
     .selected-points {
       margin-top: 10px;
       padding: 8px;
@@ -55,7 +72,78 @@
       min-height: 18px;
     }
     .selected-points .line { display: block; margin-bottom: 3px; }
-    .report { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+
+    /* === PANEL TALLER === */
+    .report {
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .report-id { font-size: 11px; color: #9ca3af; font-family: monospace; }
+    .report-fecha { font-size: 13px; color: #6b7280; }
+
+    .report-puntos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .punto-bloque {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .punto-bloque .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px; font-weight: 600; }
+    .punto-bloque .valor { font-size: 15px; font-weight: 700; color: #1e3a5f; }
+
+    /* Observaciones en flúor */
+    .obs-bloque {
+      background: #fef08a;
+      border: 1px solid #fde047;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .obs-bloque .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #78350f; margin-bottom: 4px; font-weight: 700; }
+    .obs-bloque .valor { font-size: 16px; font-weight: 700; color: #1c1917; }
+
+    .taller-campos label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; margin-top: 12px; }
+
+    .btn-guardar {
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 14px;
+      letter-spacing: 0.3px;
+    }
+    .btn-guardar:hover { background: #1e40af; }
+    .btn-guardar:disabled { background: #9ca3af; cursor: default; }
+
+    .msg-ok { color: #166534; font-weight: 700; font-size: 14px; text-align: center; margin-top: 8px; }
+    .msg-err { color: #991b1b; font-weight: 700; font-size: 14px; text-align: center; margin-top: 8px; }
+
     .ok { color: #166534; font-weight: 700; }
     .err { color: #991b1b; font-weight: 700; }
     .success-box {
@@ -67,16 +155,18 @@
       color: #166534;
     }
     .success-box h3 { margin: 0 0 8px; }
+
     @media (max-width: 720px) {
       .point-groups { grid-template-columns: 1fr; }
+      .report-puntos { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
+    <div class="card header-card">
       <h1>Sistema de Carpas</h1>
-      <p id="carpaLabel" class="muted"></p>
+      <p id="carpaLabel" class="carpa-nombre"></p>
     </div>
 
     <div id="loginCard" class="card">
@@ -129,6 +219,8 @@
               <line x1="160" y1="120" x2="160" y2="165"></line>
               <line x1="160" y1="120" x2="70" y2="165"></line>
               <line x1="160" y1="120" x2="225" y2="165"></line>
+              <!-- Tira de cierre en la base -->
+              <line x1="70" y1="175" x2="225" y2="175" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"></line>
             </svg>
             <button type="button" class="point-btn" style="left:50%;top:15.91%;" data-point-id="cuerpo_p1" data-point-label="Cuerpo P1" aria-label="Cuerpo P1">Cuerpo P1</button>
             <button type="button" class="point-btn" style="left:26.56%;top:43.18%;" data-point-id="cuerpo_p2" data-point-label="Cuerpo P2" aria-label="Cuerpo P2">Cuerpo P2</button>
@@ -136,7 +228,10 @@
             <button type="button" class="point-btn" style="left:21.88%;top:75%;" data-point-id="cuerpo_p4" data-point-label="Cuerpo P4" aria-label="Cuerpo P4">Cuerpo P4</button>
             <button type="button" class="point-btn" style="left:70.31%;top:75%;" data-point-id="cuerpo_p5" data-point-label="Cuerpo P5" aria-label="Cuerpo P5">Cuerpo P5</button>
             <button type="button" class="point-btn" style="left:50%;top:54.55%;" data-point-id="cuerpo_p6" data-point-label="Cuerpo P6" aria-label="Cuerpo P6">Cuerpo P6</button>
+            <!-- P7 = Cierre (sobre la tira amarilla) -->
+            <button type="button" class="point-btn" style="left:50%;top:82%;" data-point-id="cuerpo_p7" data-point-label="Cierre" aria-label="Cierre">Cierre</button>
           </div>
+          <p style="font-size:11px;color:#92400e;margin:6px 0 0;text-align:center;">⬛ punto amarillo = cierre</p>
         </div>
       </div>
       <p id="selectedPointsLabel" class="selected-points">
