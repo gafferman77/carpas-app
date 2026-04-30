@@ -29,7 +29,11 @@
         return;
     }
 
-    carpaLabel.textContent = carpaId ? `Carpa detectada: ${carpaId}` : "Carpa no detectada";
+    // Nombre de carpa en el header grande
+    if (carpaLabel) {
+        carpaLabel.textContent = carpaId ? carpaId : "Carpa no detectada";
+    }
+
     bindPointSelector();
     if (!carpaId) {
         loginMsg.textContent = "URL invalida: falta ID de carpa.";
@@ -39,9 +43,7 @@
     loginBtn.addEventListener("click", async () => {
         const role = roleInput.value;
         const key = keyInput.value.trim();
-        if (!carpaId) {
-            return;
-        }
+        if (!carpaId) return;
         if (!key) {
             loginMsg.textContent = "Ingresa la palabra clave.";
             loginMsg.className = "err";
@@ -69,9 +71,7 @@
     });
 
     saveAtpBtn.addEventListener("click", async () => {
-        if (saveAtpBtn.disabled) {
-            return;
-        }
+        if (saveAtpBtn.disabled) return;
         const puntos = getSelectedPoints();
         const payload = {
             role: access.role,
@@ -120,10 +120,15 @@
     }
 
     async function saveReporteUpdate(event) {
-        const reporteId = event.currentTarget.getAttribute("data-save-reporte");
+        const btn = event.currentTarget;
+        const reporteId = btn.getAttribute("data-save-reporte");
         const destinoInput = document.querySelector(`[data-destino='${reporteId}']`);
         const notaInput = document.querySelector(`[data-nota='${reporteId}']`);
         const msg = document.querySelector(`[data-msg='${reporteId}']`);
+
+        btn.disabled = true;
+        btn.textContent = "Guardando...";
+
         const body = {
             role: access.role,
             key: access.key,
@@ -133,41 +138,83 @@
         const updated = await patchJson(`/api/reportes/${encodeURIComponent(reporteId)}`, body);
         if (!updated || !updated.ok) {
             msg.textContent = updated?.error || "No se pudo actualizar.";
-            msg.className = "err";
+            msg.className = "msg-err";
+            btn.disabled = false;
+            btn.textContent = "Guardar cambios";
             return;
         }
-        msg.textContent = "Actualizado correctamente.";
-        msg.className = "ok";
+        msg.textContent = "✓ Guardado correctamente.";
+        msg.className = "msg-ok";
+
+        // Cerrar pestaña luego de guardar
+        setTimeout(() => {
+            window.close();
+            window.location.replace(`/cierre.html?v=${Date.now()}`);
+        }, 1200);
     }
 
     function renderReporte(item) {
-        const puntos = item.puntos || item.partes || [];
+        // Usar solo puntos (evitar duplicados con partes)
+        const puntos = item.puntos || [];
         const cuerpo = puntos
-            .filter((p) => String(p || "").toLowerCase().includes("cuerpo"))
+            .filter((p) => String(p || "").toLowerCase().startsWith("cuerpo_"))
             .map(formatPointLabel);
         const sobretecho = puntos
-            .filter((p) => String(p || "").toLowerCase().includes("sobretecho"))
+            .filter((p) => String(p || "").toLowerCase().startsWith("sobretecho_"))
             .map(formatPointLabel);
-        const destino = item.destino || item.estado || "taller/estanteria";
+        const destino = item.destino || "taller/estanteria";
+
+        // Fecha legible
+        let fechaDisplay = "-";
+        if (item.createdAt) {
+            try {
+                const d = new Date(item.createdAt);
+                fechaDisplay = d.toLocaleDateString("es-AR", {
+                    day: "2-digit", month: "2-digit", year: "numeric",
+                    hour: "2-digit", minute: "2-digit"
+                });
+            } catch (_) {
+                fechaDisplay = item.createdAt;
+            }
+        }
+
         return `
             <div class="report">
-                <p><strong>ID:</strong> ${item.id}</p>
-                <p><strong>Fecha:</strong> ${item.createdAt || "-"}</p>
-                <p><strong>CUERPO:</strong> ${cuerpo.join(", ") || "(sin puntos)"}</p>
-                <p><strong>SOBRETECHO:</strong> ${sobretecho.join(", ") || "(sin puntos)"}</p>
-                <p><strong>Observaciones:</strong> ${item.detalle || "-"}</p>
-                <label>Destino</label>
-                <select data-destino="${item.id}">
-                    <option value="taller/estanteria" ${destino === "taller/estanteria" ? "selected" : ""}>taller/estanteria</option>
-                    <option value="desguase" ${destino === "desguase" ? "selected" : ""}>desguase</option>
-                    <option value="campo" ${destino === "campo" ? "selected" : ""}>campo</option>
-                </select>
-                <br /><br />
-                <label>Nota taller</label>
-                <textarea data-nota="${item.id}">${item.tallerNota || ""}</textarea>
-                <br />
-                <button data-save-reporte="${item.id}">Guardar cambios</button>
-                <p data-msg="${item.id}" class="muted"></p>
+                <div class="report-header">
+                    <span class="report-id">ID: ${item.id}</span>
+                    <span class="report-fecha">📅 ${fechaDisplay}</span>
+                </div>
+
+                <div class="report-puntos">
+                    <div class="punto-bloque">
+                        <div class="label">Cuerpo</div>
+                        <div class="valor">${cuerpo.join(", ") || "(sin puntos)"}</div>
+                    </div>
+                    <div class="punto-bloque">
+                        <div class="label">Sobretecho</div>
+                        <div class="valor">${sobretecho.join(", ") || "(sin puntos)"}</div>
+                    </div>
+                </div>
+
+                <div class="obs-bloque">
+                    <div class="label">⚠ Observaciones</div>
+                    <div class="valor">${item.detalle || "(sin observaciones)"}</div>
+                </div>
+
+                <div class="taller-campos">
+                    <label>Destino</label>
+                    <select data-destino="${item.id}">
+                        <option value="taller/estanteria" ${destino === "taller/estanteria" ? "selected" : ""}>taller/estanteria</option>
+                        <option value="desguase" ${destino === "desguase" ? "selected" : ""}>desguase</option>
+                        <option value="campo" ${destino === "campo" ? "selected" : ""}>campo</option>
+                    </select>
+
+                    <label>Nota taller</label>
+                    <textarea data-nota="${item.id}">${item.tallerNota || ""}</textarea>
+                </div>
+
+                <button class="btn-guardar" data-save-reporte="${item.id}">Guardar cambios</button>
+                <p data-msg="${item.id}"></p>
             </div>
         `;
     }
@@ -196,9 +243,7 @@
     }
 
     function renderSelectedPointsSummary() {
-        if (!selectedPointsLabel) {
-            return;
-        }
+        if (!selectedPointsLabel) return;
         const selected = Array.from(document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`));
         const cuerpo = selected
             .filter((btn) => String(btn.getAttribute("data-point-id") || "").startsWith("cuerpo_"))
@@ -214,10 +259,10 @@
 
     function formatPointLabel(raw) {
         const text = String(raw || "").trim();
+        // Cierre (P7)
+        if (text.match(/^cuerpo_p7$/i)) return "Cierre";
         const match = text.match(/^(sobretecho|cuerpo)_p(\d+)$/i);
-        if (!match) {
-            return text || "-";
-        }
+        if (!match) return text || "-";
         const zone = match[1].toLowerCase() === "sobretecho" ? "Sobretecho" : "Cuerpo";
         return `${zone} P${match[2]}`;
     }
@@ -241,25 +286,19 @@
     }
 
     function hasAlreadyReportedInSession() {
-        if (!carpaId || !window.sessionStorage) {
-            return false;
-        }
+        if (!carpaId || !window.sessionStorage) return false;
         return window.sessionStorage.getItem(reportedSessionKey) === "1";
     }
 
     function markReportedInSession() {
-        if (!carpaId || !window.sessionStorage) {
-            return;
-        }
+        if (!carpaId || !window.sessionStorage) return;
         window.sessionStorage.setItem(reportedSessionKey, "1");
     }
 
     function getCarpaId() {
         const search = new URLSearchParams(window.location.search);
         const queryId = search.get("carpa");
-        if (queryId) {
-            return sanitizeCarpa(queryId);
-        }
+        if (queryId) return sanitizeCarpa(queryId);
         const segments = window.location.pathname.split("/").filter(Boolean);
         const last = segments[segments.length - 1] || "";
         return sanitizeCarpa(last);
@@ -267,9 +306,7 @@
 
     function sanitizeCarpa(value) {
         const text = String(value || "").trim().toUpperCase();
-        if (!text) {
-            return "";
-        }
+        if (!text) return "";
         return text.replace(/[^A-Z0-9-_]/g, "");
     }
 
