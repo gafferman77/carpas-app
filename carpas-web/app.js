@@ -1,335 +1,86 @@
-(function () {
-    const POINT_BTN_SELECTOR = ".point-btn[data-point-id]";
-    const carpaId = getCarpaId();
-    const reportedSessionKey = `carpaReported:${carpaId}`;
-    let access = { role: "", key: "" };
+(() => {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+  const views = $$(".view");
+  const state = { role: "", key: "", carpaId: carpaFromPath(), historyCarpa: "" };
 
-    const carpaLabel = document.getElementById("carpaLabel");
-    const loginCard = document.getElementById("loginCard");
-    const atpCard = document.getElementById("atpCard");
-    const tallerCard = document.getElementById("tallerCard");
+  function carpaFromPath() { const m = location.pathname.match(/\/carpa\/(CARPA-\d{3})/i); return m ? m[1].toUpperCase() : ""; }
+  function normalizeCarpa(value) {
+    const m = String(value || "").trim().toUpperCase().match(/^(?:CARPA[\s-_]*)?0*(\d{1,3})$/);
+    if (!m) return ""; const n = Number(m[1]);
+    return n >= 1 && n <= 180 ? `CARPA-${String(n).padStart(3, "0")}` : "";
+  }
+  function show(id) { views.forEach(v => v.classList.toggle("hidden", v.id !== id)); scrollTo({ top: 0, behavior: "smooth" }); }
+  function message(el, text, type = "") { el.textContent = text; el.className = `message ${type}`; }
+  async function api(url, options) {
+    try { const res = await fetch(url, options); const data = await res.json(); return res.ok ? data : { error: data.error || "Ocurrió un error" }; }
+    catch (_) { return { error: "No hay conexión. Probá nuevamente." }; }
+  }
+  const json = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  function goHome() { state.role = ""; state.key = ""; $("#logoutBtn").classList.add("hidden"); show("homeView"); }
 
-    const roleInput = document.getElementById("role");
-    const keyInput = document.getElementById("key");
-    const loginBtn = document.getElementById("loginBtn");
-    const loginMsg = document.getElementById("loginMsg");
+  $$("[data-mode]").forEach(btn => btn.onclick = () => begin(btn.dataset.mode));
+  $$("[data-back]").forEach(btn => btn.onclick = goHome);
+  $("#logoutBtn").onclick = goHome;
+  function begin(role) {
+    state.role = role; $("#loginRole").textContent = role === "ATP" ? "OPERARIO ATP" : "TALLER";
+    $("#keyInput").value = ""; message($("#loginMsg"), ""); show("loginView"); $("#keyInput").focus();
+  }
+  $("#keyInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#loginBtn").click(); });
+  $("#loginBtn").onclick = async () => {
+    const key = $("#keyInput").value.trim(); if (!key) return message($("#loginMsg"), "Ingresá la palabra clave.", "error");
+    $("#loginBtn").disabled = true; const data = await api("/api/auth", json("POST", { role: state.role, key })); $("#loginBtn").disabled = false;
+    if (!data.ok) return message($("#loginMsg"), "La clave no es correcta.", "error");
+    state.key = key; $("#logoutBtn").classList.remove("hidden");
+    if (state.role === "TALLER") { show("tallerView"); loadPending(); }
+    else if (state.carpaId) openAtp(state.carpaId); else { $("#searchRole").textContent = "OPERARIO ATP"; show("searchView"); }
+  };
 
-    const detalleInput = document.getElementById("detalle");
-    const saveAtpBtn = document.getElementById("saveAtpBtn");
-    const atpMsg = document.getElementById("atpMsg");
-    const selectedPointsLabel = document.getElementById("selectedPointsLabel");
-    const flowClosedBox = document.getElementById("flowClosedBox");
-    const closeTabBtn = document.getElementById("closeTabBtn");
+  function useSearch(input, msg, callback) { const id = normalizeCarpa(input.value); if (!id) return message(msg, "Ingresá un número entre 1 y 180.", "error"); message(msg, ""); callback(id); }
+  $("#searchBtn").onclick = () => useSearch($("#carpaSearch"), $("#searchMsg"), openAtp);
+  $("#carpaSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("#searchBtn").click(); });
+  function openAtp(id) { state.carpaId = id; $("#atpCarpa").textContent = id; show("atpView"); }
+  $$("[data-problem], [data-point]").forEach(btn => btn.onclick = () => btn.classList.toggle("selected"));
+  $("#sendReportBtn").onclick = async () => {
+    const btn = $("#sendReportBtn"); const body = { role: state.role, key: state.key, reportadoPor: $("#reportadoPor").value, problemas: $$("[data-problem].selected").map(x => x.dataset.problem), puntos: $$("[data-point].selected").map(x => x.dataset.point), prioridad: $("input[name=priority]:checked").value, detalle: $("#detalle").value.trim() };
+    btn.disabled = true; btn.textContent = "Enviando…"; const data = await api(`/api/carpas/${state.carpaId}/reportes`, json("POST", body)); btn.disabled = false; btn.textContent = "Enviar al taller";
+    if (data.error) return message($("#atpMsg"), data.error, "error");
+    $("#atpView").innerHTML = `<div class="panel success-card"><span class="check">✓</span><h2>Reporte enviado</h2><p>El taller ya puede ver el parte de <strong>${data.carpaId}</strong> en su lista de pendientes.</p><button class="primary" id="finishBtn">Finalizar</button></div>`;
+    $("#finishBtn").onclick = goHome;
+  };
 
-    const reloadBtn = document.getElementById("reloadBtn");
-    const reportesBox = document.getElementById("reportes");
-
-    if (hasAlreadyReportedInSession()) {
-        window.location.replace("/cierre.html");
-        return;
-    }
-
-    // Nombre de carpa en el header grande
-    if (carpaLabel) {
-        carpaLabel.textContent = carpaId ? carpaId : "Carpa no detectada";
-    }
-
-    bindPointSelector();
-    if (!carpaId) {
-        loginMsg.textContent = "URL invalida: falta ID de carpa.";
-        loginMsg.className = "err";
-    }
-
-    loginBtn.addEventListener("click", async () => {
-        const role = roleInput.value;
-        const key = keyInput.value.trim();
-        if (!carpaId) return;
-        if (!key) {
-            loginMsg.textContent = "Ingresa la palabra clave.";
-            loginMsg.className = "err";
-            return;
-        }
-
-        const ok = await postJson("/api/auth", { role, key });
-        if (!ok || !ok.ok) {
-            loginMsg.textContent = "Clave incorrecta.";
-            loginMsg.className = "err";
-            return;
-        }
-
-        access = { role, key };
-        loginMsg.textContent = "Acceso correcto.";
-        loginMsg.className = "ok";
-        loginCard.classList.add("hidden");
-
-        if (role === "ATP") {
-            atpCard.classList.remove("hidden");
-            return;
-        }
-        tallerCard.classList.remove("hidden");
-        loadReportes();
+  $("#refreshBtn").onclick = loadPending;
+  $("#tallerSearchBtn").onclick = () => useSearch($("#tallerSearch"), $("#tallerSearchMsg"), loadHistory);
+  $("#tallerSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("#tallerSearchBtn").click(); });
+  $$("[data-tab]").forEach(btn => btn.onclick = () => selectTab(btn.dataset.tab));
+  function selectTab(tab) { $$("[data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === tab)); $("#pendingPane").classList.toggle("hidden", tab !== "pending"); $("#historyPane").classList.toggle("hidden", tab !== "history"); }
+  async function loadPending() {
+    $("#pendingList").innerHTML = '<div class="empty">Cargando pendientes…</div>';
+    const data = await api(`/api/taller/pendientes?role=TALLER&key=${encodeURIComponent(state.key)}`);
+    if (data.error) { $("#pendingList").innerHTML = `<div class="empty">${escapeHtml(data.error)}</div>`; return; }
+    $("#pendingCount").textContent = data.total; renderReports($("#pendingList"), data.reportes, "No hay reparaciones pendientes.");
+  }
+  async function loadHistory(id) {
+    state.historyCarpa = id; selectTab("history"); $("#historyTitle").classList.remove("hidden"); $("#historyTitle strong").textContent = id; $("#historyList").innerHTML = '<div class="empty">Cargando historial…</div>';
+    const data = await api(`/api/carpas/${id}/reportes?role=TALLER&key=${encodeURIComponent(state.key)}`);
+    if (data.error) return renderReports($("#historyList"), [], data.error);
+    renderReports($("#historyList"), data.reportes, `${id} todavía no tiene reportes.`);
+  }
+  function renderReports(container, reports, empty) {
+    container.innerHTML = ""; if (!reports.length) { container.innerHTML = `<div class="empty">${escapeHtml(empty)}</div>`; return; }
+    reports.forEach(report => {
+      const node = $("#reportTemplate").content.cloneNode(true); const article = $(".report", node); const status = report.estado || (report.destino === "campo" ? "reparada" : "pendiente");
+      $(".report-carpa", node).textContent = report.carpaId; $("time", node).textContent = formatDate(report.createdAt); $(".status", node).textContent = status.replace("_", " "); $(".status", node).classList.add(status);
+      const tags = [...(report.problemas || [])]; if (report.prioridad === "urgente") tags.unshift("⚠ urgente"); $(".tags", node).innerHTML = tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
+      $(".detail", node).textContent = report.detalle || "Sin observaciones."; $(".zones", node).textContent = `Zonas: ${(report.puntos || report.partes || []).map(pointLabel).join(", ") || "sin marcar"}${report.reportadoPor ? ` · Reportó: ${report.reportadoPor}` : ""}`;
+      $(".state", node).value = status; $(".destination", node).value = report.destino || "taller/estanteria"; $(".repaired-by", node).value = report.reparadoPor || ""; $(".shop-note", node).value = report.tallerNota || "";
+      $(".save", node).onclick = async e => { const button = e.currentTarget; button.disabled = true; const result = await api(`/api/reportes/${encodeURIComponent(report.id)}`, json("PATCH", { role: "TALLER", key: state.key, estado: $(".state", article).value, destino: $(".destination", article).value, reparadoPor: $(".repaired-by", article).value, tallerNota: $(".shop-note", article).value })); button.disabled = false; if (result.error) return message($(".save-msg", article), result.error, "error"); message($(".save-msg", article), "Cambios guardados.", "success"); loadPending(); if (state.historyCarpa) loadHistory(state.historyCarpa); };
+      container.appendChild(node);
     });
-
-    saveAtpBtn.addEventListener("click", async () => {
-        if (saveAtpBtn.disabled) return;
-        const puntos = getSelectedPoints();
-        const payload = {
-            role: access.role,
-            key: access.key,
-            puntos,
-            partes: puntos,
-            detalle: detalleInput.value.trim()
-        };
-
-        const saved = await postJson(`/api/carpas/${encodeURIComponent(carpaId)}/reportes`, payload);
-        if (!saved || !saved.ok) {
-            atpMsg.textContent = saved?.error || "No se pudo guardar el reporte.";
-            atpMsg.className = "err";
-            return;
-        }
-        atpMsg.textContent = `Reporte guardado correctamente (${saved.reporteId}).`;
-        atpMsg.className = "ok";
-        detalleInput.value = "";
-        clearSelectedPoints();
-        closeAtpFlow();
-    });
-
-    reloadBtn.addEventListener("click", loadReportes);
-    if (closeTabBtn) {
-        closeTabBtn.addEventListener("click", closeCurrentTab);
-    }
-
-    async function loadReportes() {
-        reportesBox.innerHTML = "<p class='muted'>Cargando reportes...</p>";
-        const url = `/api/carpas/${encodeURIComponent(carpaId)}/reportes?role=${encodeURIComponent(
-            access.role
-        )}&key=${encodeURIComponent(access.key)}`;
-        const data = await getJson(url);
-        if (!data || data.error) {
-            reportesBox.innerHTML = `<p class="err">${data?.error || "Error al cargar reportes."}</p>`;
-            return;
-        }
-        if (!data.reportes.length) {
-            reportesBox.innerHTML = "<p class='muted'>Sin reportes para esta carpa.</p>";
-            return;
-        }
-        reportesBox.innerHTML = data.reportes.map(renderReporte).join("");
-        document.querySelectorAll("[data-save-reporte]").forEach((btn) => {
-            btn.addEventListener("click", saveReporteUpdate);
-        });
-    }
-
-    async function saveReporteUpdate(event) {
-        const btn = event.currentTarget;
-        const reporteId = btn.getAttribute("data-save-reporte");
-        const destinoInput = document.querySelector(`[data-destino='${reporteId}']`);
-        const notaInput = document.querySelector(`[data-nota='${reporteId}']`);
-        const msg = document.querySelector(`[data-msg='${reporteId}']`);
-
-        btn.disabled = true;
-        btn.textContent = "Guardando...";
-
-        const body = {
-            role: access.role,
-            key: access.key,
-            destino: destinoInput.value,
-            tallerNota: notaInput.value.trim()
-        };
-        const updated = await patchJson(`/api/reportes/${encodeURIComponent(reporteId)}`, body);
-        if (!updated || !updated.ok) {
-            msg.textContent = updated?.error || "No se pudo actualizar.";
-            msg.className = "msg-err";
-            btn.disabled = false;
-            btn.textContent = "Guardar cambios";
-            return;
-        }
-        msg.textContent = "✓ Guardado correctamente.";
-        msg.className = "msg-ok";
-
-        // Cerrar pestaña luego de guardar
-        setTimeout(() => {
-            window.close();
-            window.location.replace(`/cierre.html?v=${Date.now()}`);
-        }, 1200);
-    }
-
-    function renderReporte(item) {
-        // Usar solo puntos (evitar duplicados con partes)
-        const puntos = item.puntos || [];
-        const cuerpo = puntos
-            .filter((p) => String(p || "").toLowerCase().startsWith("cuerpo_"))
-            .map(formatPointLabel);
-        const sobretecho = puntos
-            .filter((p) => String(p || "").toLowerCase().startsWith("sobretecho_"))
-            .map(formatPointLabel);
-        const destino = item.destino || "taller/estanteria";
-
-        // Fecha legible
-        let fechaDisplay = "-";
-        if (item.createdAt) {
-            try {
-                const d = new Date(item.createdAt);
-                fechaDisplay = d.toLocaleDateString("es-AR", {
-                    day: "2-digit", month: "2-digit", year: "numeric",
-                    hour: "2-digit", minute: "2-digit"
-                });
-            } catch (_) {
-                fechaDisplay = item.createdAt;
-            }
-        }
-
-        return `
-            <div class="report">
-                <div class="report-header">
-                    <span class="report-id">ID: ${item.id}</span>
-                    <span class="report-fecha">📅 ${fechaDisplay}</span>
-                </div>
-
-                <div class="report-puntos">
-                    <div class="punto-bloque">
-                        <div class="label">Cuerpo</div>
-                        <div class="valor">${cuerpo.join(", ") || "(sin puntos)"}</div>
-                    </div>
-                    <div class="punto-bloque">
-                        <div class="label">Sobretecho</div>
-                        <div class="valor">${sobretecho.join(", ") || "(sin puntos)"}</div>
-                    </div>
-                </div>
-
-                <div class="obs-bloque">
-                    <div class="label">⚠ Observaciones</div>
-                    <div class="valor">${item.detalle || "(sin observaciones)"}</div>
-                </div>
-
-                <div class="taller-campos">
-                    <label>Destino</label>
-                    <select data-destino="${item.id}">
-                        <option value="taller/estanteria" ${destino === "taller/estanteria" ? "selected" : ""}>taller/estanteria</option>
-                        <option value="desguase" ${destino === "desguase" ? "selected" : ""}>desguase</option>
-                        <option value="campo" ${destino === "campo" ? "selected" : ""}>campo</option>
-                    </select>
-
-                    <label>Nota taller</label>
-                    <textarea data-nota="${item.id}">${item.tallerNota || ""}</textarea>
-                </div>
-
-                <button class="btn-guardar" data-save-reporte="${item.id}">Guardar cambios</button>
-                <p data-msg="${item.id}"></p>
-            </div>
-        `;
-    }
-
-    function bindPointSelector() {
-        document.querySelectorAll(POINT_BTN_SELECTOR).forEach((btn) => {
-            btn.addEventListener("click", () => {
-                btn.classList.toggle("is-selected");
-                renderSelectedPointsSummary();
-            });
-        });
-        renderSelectedPointsSummary();
-    }
-
-    function getSelectedPoints() {
-        return Array.from(document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`))
-            .map((btn) => String(btn.getAttribute("data-point-id") || "").trim().toLowerCase())
-            .filter(Boolean);
-    }
-
-    function clearSelectedPoints() {
-        document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`).forEach((btn) => {
-            btn.classList.remove("is-selected");
-        });
-        renderSelectedPointsSummary();
-    }
-
-    function renderSelectedPointsSummary() {
-        if (!selectedPointsLabel) return;
-        const selected = Array.from(document.querySelectorAll(`${POINT_BTN_SELECTOR}.is-selected`));
-        const cuerpo = selected
-            .filter((btn) => String(btn.getAttribute("data-point-id") || "").startsWith("cuerpo_"))
-            .map((btn) => formatPointLabel(btn.getAttribute("data-point-id")));
-        const sobretecho = selected
-            .filter((btn) => String(btn.getAttribute("data-point-id") || "").startsWith("sobretecho_"))
-            .map((btn) => formatPointLabel(btn.getAttribute("data-point-id")));
-        selectedPointsLabel.innerHTML = `
-            <span class="line"><strong>CUERPO:</strong> ${cuerpo.join(", ") || "ninguno"}</span>
-            <span class="line"><strong>SOBRETECHO:</strong> ${sobretecho.join(", ") || "ninguno"}</span>
-        `;
-    }
-
-    function formatPointLabel(raw) {
-        const text = String(raw || "").trim();
-        // Cierre (P7)
-        if (text.match(/^cuerpo_p7$/i)) return "Cierre";
-        const match = text.match(/^(sobretecho|cuerpo)_p(\d+)$/i);
-        if (!match) return text || "-";
-        const zone = match[1].toLowerCase() === "sobretecho" ? "Sobretecho" : "Cuerpo";
-        return `${zone} P${match[2]}`;
-    }
-
-    function closeAtpFlow() {
-        markReportedInSession();
-        saveAtpBtn.disabled = true;
-        saveAtpBtn.textContent = "Reporte enviado";
-        atpMsg.textContent = "Gracias por el informe.";
-        atpMsg.className = "ok";
-        if (flowClosedBox) {
-            flowClosedBox.classList.remove("hidden");
-        }
-        setTimeout(closeCurrentTab, 700);
-    }
-
-    function closeCurrentTab() {
-        window.close();
-        const bust = Date.now();
-        window.location.replace(`/cierre.html?v=${bust}`);
-    }
-
-    function hasAlreadyReportedInSession() {
-        if (!carpaId || !window.sessionStorage) return false;
-        return window.sessionStorage.getItem(reportedSessionKey) === "1";
-    }
-
-    function markReportedInSession() {
-        if (!carpaId || !window.sessionStorage) return;
-        window.sessionStorage.setItem(reportedSessionKey, "1");
-    }
-
-    function getCarpaId() {
-        const search = new URLSearchParams(window.location.search);
-        const queryId = search.get("carpa");
-        if (queryId) return sanitizeCarpa(queryId);
-        const segments = window.location.pathname.split("/").filter(Boolean);
-        const last = segments[segments.length - 1] || "";
-        return sanitizeCarpa(last);
-    }
-
-    function sanitizeCarpa(value) {
-        const text = String(value || "").trim().toUpperCase();
-        if (!text) return "";
-        return text.replace(/[^A-Z0-9-_]/g, "");
-    }
-
-    async function getJson(url) {
-        const res = await fetch(url);
-        return res.json();
-    }
-
-    async function postJson(url, body) {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-        return res.json();
-    }
-
-    async function patchJson(url, body) {
-        const res = await fetch(url, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-        return res.json();
-    }
+  }
+  function pointLabel(p) { const m = String(p).match(/^(sobretecho|cuerpo)_p(\d+)$/); if (!m) return p; if (m[1] === "cuerpo" && m[2] === "7") return "Cierre"; return `${m[1] === "cuerpo" ? "Cuerpo" : "Sobretecho"} P${m[2]}`; }
+  function formatDate(value) { if (!value) return "Sin fecha"; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }); }
+  function escapeHtml(value) { return String(value || "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])); }
+  if (state.carpaId) begin("ATP");
 })();

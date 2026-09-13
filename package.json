@@ -6,6 +6,7 @@
   "main": "server/send-reminders.js",
   "scripts": {
     "start": "node server/carpas-web.js",
+    "test": "node --test test/*.test.js",
     "push:worker": "node server/send-reminders.js",
     "students:import": "node server/import-inscripciones.js",
     "students:web": "node server/students-web.js",

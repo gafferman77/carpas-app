@@ -4,7 +4,7 @@ const os = require("os");
 const path = require("path");
 const QRCode = require("qrcode");
 
-const TOTAL = Number(process.env.CARPAS_QR_TOTAL || 100);
+const TOTAL = Number(process.env.CARPAS_QR_TOTAL || 180);
 const START = Number(process.env.CARPAS_QR_START || 1);
 const PORT = Number(process.env.CARPAS_PORT || 5050);
 const OUTPUT_DIR = path.resolve(process.cwd(), "carpas-web", "qr-output");
@@ -88,7 +88,7 @@ async function generate() {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>100 QRs de Carpas</title>
+  <title>${TOTAL} QRs de Carpas</title>
   <style>
     @page { size: A4; margin: 8mm; }
     body { font-family: Arial, sans-serif; margin: 0; }
