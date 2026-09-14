@@ -21,6 +21,187 @@ body, input, textarea, select, button { font-size: 16px; }
 label { font-size: 15px; }
 .muted, .message { font-size: 14px; }
 
+.photo-field { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.photo-input { display: none; }
+.photo-button {
+  width: 100%; min-height: 56px; border: 2px solid var(--green); border-radius: 16px;
+  background: var(--mint); color: var(--green); font-size: 17px; font-weight: 850; cursor: pointer;
+}
+.photo-field .muted { margin: 7px 2px 12px; }
+.photo-preview { position: relative; overflow: hidden; border-radius: 18px; background: #e7ece8; }
+.photo-preview img { display: block; width: 100%; max-height: 420px; object-fit: cover; }
+.photo-preview button {
+  position: absolute; right: 10px; bottom: 10px; min-height: 44px; padding: 10px 14px;
+  border-radius: 12px; background: rgba(18,55,42,.92); color: #fff; font-weight: 800; cursor: pointer;
+}
+.report-photo { display: block; width: 100%; max-height: 480px; margin-top: 14px; object-fit: contain; border-radius: 14px; background: #eef1ef; }
+
+/* Diseño móvil bosque / campamento */
+body[data-mode="atp"] {
+  background: linear-gradient(180deg, #e9eee4 0, #f7f3e9 520px);
+}
+.login-scene {
+  position: relative;
+  min-height: 680px;
+  padding-top: 230px;
+}
+.login-art {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 410px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(15, 48, 35, .02) 35%, rgba(15, 48, 35, .92) 100%),
+    url('/assets/atp-forest.webp') center 30% / cover;
+  box-shadow: 0 18px 45px rgba(14, 43, 31, .22);
+}
+.login-panel {
+  position: relative;
+  margin: 0 18px;
+  padding: 28px;
+  border: 0;
+  border-radius: 26px;
+  box-shadow: 0 18px 44px rgba(10, 34, 24, .24);
+}
+.login-panel .taller-login-logo {
+  width: 82px;
+  height: 82px;
+  float: right;
+  margin: -10px -8px 6px 18px;
+  border: 3px solid #fff;
+  border-radius: 22px;
+  box-shadow: 0 7px 18px rgba(18, 55, 42, .22);
+}
+body[data-mode="taller"] .login-panel .taller-login-logo {
+  width: 142px;
+  height: 142px;
+  float: none;
+  margin: -6px auto 20px;
+}
+.login-help {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.45;
+  max-width: 390px;
+}
+.login-panel input {
+  min-height: 54px;
+  border: 2px solid #aab7ae;
+  border-radius: 15px;
+}
+.login-panel .primary {
+  min-height: 56px;
+  background: linear-gradient(135deg, #174b38, #0d3426);
+  border-bottom: 4px solid #08261b;
+}
+.atp-screen {
+  max-width: 760px;
+  margin: auto;
+}
+.atp-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  color: #fff;
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg, rgba(12, 51, 36, .96), rgba(28, 91, 64, .84)),
+    url('/assets/atp-forest.webp') center 42% / cover;
+  box-shadow: var(--shadow);
+}
+.atp-banner img {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border: 3px solid rgba(255,255,255,.85);
+  border-radius: 19px;
+}
+.atp-banner .identity {
+  margin: 0;
+  border-left-color: #ff8a3d;
+}
+.atp-banner .identity span { color: #dbe9df; }
+.atp-banner .identity strong { color: #fff; }
+.atp-screen .panel {
+  border: 0;
+  border-radius: 24px;
+  padding: 24px;
+}
+.problem-picker {
+  overflow: hidden;
+  border: 2px solid #c5d0c8;
+  border-radius: 16px;
+  background: #fbfcfa;
+}
+.problem-picker summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 62px;
+  padding: 14px 16px;
+  list-style: none;
+}
+.problem-picker summary::-webkit-details-marker { display: none; }
+.problem-picker summary::after {
+  content: '⌄';
+  order: 3;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--mint);
+  font-size: 22px;
+}
+.problem-picker[open] summary::after { content: '⌃'; }
+.problem-picker summary strong {
+  color: var(--orange);
+  font-size: 13px;
+}
+.problem-picker .chips {
+  margin: 0;
+  padding: 4px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+.problem-picker .chips button {
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 2px solid #d0d8d2;
+  font-weight: 800;
+}
+.problem-picker .chips button.selected {
+  background: var(--orange);
+  border-color: #bd5426;
+}
+.atp-screen h2 { line-height: 1.08; }
+.atp-screen textarea { min-height: 130px; border-radius: 16px; }
+.atp-screen .big { min-height: 58px; border-radius: 16px; font-size: 18px; }
+.manage label:nth-of-type(5),
+.manage .save,
+.manage .save-msg { grid-column: 1/-1; }
+
+@media (max-width: 680px) {
+  .shell { padding: 14px 12px 50px; }
+  .topbar { min-height: 72px; }
+  .topbar h1 { font-size: 21px; }
+  .login-scene { min-height: calc(100vh - 100px); padding-top: 205px; }
+  .login-art { height: 355px; border-radius: 0 0 28px 28px; margin: -14px -12px 0; }
+  .login-panel { margin: 0 4px; padding: 24px 20px; }
+  .login-panel h2 { font-size: 30px; }
+  .atp-screen .panel { padding: 20px 17px; border-radius: 22px; }
+  .atp-banner { border-radius: 22px; padding: 11px 13px; }
+  .atp-banner img { width: 62px; height: 62px; }
+  .atp-banner .identity { padding: 5px 11px; }
+  .atp-banner .identity strong { font-size: 27px; }
+  .problem-picker summary { align-items: flex-start; flex-direction: column; padding-right: 52px; position: relative; }
+  .problem-picker summary::after { position: absolute; right: 14px; top: 15px; }
+  .chips { gap: 9px; }
+  .chips button { flex: 1 1 42%; }
+  .manage label, .manage label:nth-of-type(5) { grid-column: 1; }
+}
+
 @media (max-width: 680px) {
   .taller-login-logo { width: 150px; height: 150px; }
   .taller-heading img { width: 62px; height: 62px; }

@@ -1,5 +1,5 @@
-const CACHE = "carpas-shell-v3";
-const SHELL = ["/", "/styles.css", "/app.js", "/assets/taller-logo.webp"];
+const CACHE = "carpas-shell-v5";
+const SHELL = ["/", "/styles.css", "/app.js", "/assets/taller-logo.webp", "/assets/atp-forest.webp"];
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {

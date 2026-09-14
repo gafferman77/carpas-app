@@ -65,7 +65,7 @@ function requireRole(source, role, res) {
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
 app.use(express.static(PUBLIC_DIR, {
     etag: true, maxAge: "7d", index: false,
     setHeaders(res, filePath) { if (filePath.endsWith("sw.js")) res.setHeader("Cache-Control", "no-cache"); }
@@ -90,11 +90,13 @@ app.post("/api/carpas/:rawId/reportes", async (req, res) => {
     const puntos = cleanList(req.body.puntos, /^(sobretecho|cuerpo)_p\d+$/);
     const problemas = cleanList(req.body.problemas, /^(rotura|costura|cierre|piso|estructura|faltante|otro)$/);
     const detalle = cleanString(req.body.detalle);
+    const foto = String(req.body.foto || "");
     if (!carpaId) return res.status(400).json({ error: "Carpa inválida" });
-    if (!puntos.length && !problemas.length && !detalle) return res.status(400).json({ error: "Marcá un daño o escribí una observación" });
+    if (foto && (!/^data:image\/jpeg;base64,[a-z0-9+/=]+$/i.test(foto) || foto.length > 700000)) return res.status(400).json({ error: "La foto es demasiado grande o no es válida" });
+    if (!puntos.length && !problemas.length && !detalle && !foto) return res.status(400).json({ error: "Marcá un daño, agregá una foto o escribí una observación" });
     try {
         const db = await ensureDb(); const now = new Date().toISOString();
-        const ref = await db.collection("carpasReportes").add({ carpaId, puntos, partes: puntos, problemas, detalle, reportadoPor: cleanString(req.body.reportadoPor, 80), prioridad: ["normal", "urgente"].includes(req.body.prioridad) ? req.body.prioridad : "normal", estado: "pendiente", destino: "taller/estanteria", tallerNota: "", createdAt: now, updatedAt: now });
+        const ref = await db.collection("carpasReportes").add({ carpaId, puntos, partes: puntos, problemas, detalle, foto, prioridad: "normal", estado: "pendiente", destino: "taller/estanteria", tallerNota: "", createdAt: now, updatedAt: now });
         await db.collection("carpas").doc(carpaId).set({ carpaId, updatedAt: now, hasPending: true }, { merge: true });
         res.json({ ok: true, reporteId: ref.id, carpaId });
     } catch (error) { console.error("[report-create]", error); res.status(500).json({ error: "No se pudo guardar el reporte" }); }
@@ -113,20 +115,21 @@ app.get("/api/taller/pendientes", async (req, res) => {
     if (!requireRole(req.query, "TALLER", res)) return;
     try {
         const snap = await (await ensureDb()).collection("carpasReportes").limit(500).get();
-        const reports = sortNewest(snap.docs.map(serializeDoc).filter(isPending));
+        const reports = sortNewest(snap.docs.map(serializeDoc).filter(isPending)).sort((a, b) => Number(b.prioridad === "urgente") - Number(a.prioridad === "urgente"));
         res.json({ total: reports.length, reportes: reports });
     } catch (error) { console.error("[pending-list]", error); res.status(500).json({ error: "No se pudo cargar la lista de pendientes" }); }
 });
 app.patch("/api/reportes/:reportId", async (req, res) => {
     if (!requireRole(req.body, "TALLER", res)) return;
-    const estado = cleanString(req.body.estado, 30).toLowerCase(); const destino = cleanString(req.body.destino, 30).toLowerCase();
+    const estado = cleanString(req.body.estado, 30).toLowerCase(); const destino = cleanString(req.body.destino, 30).toLowerCase(); const prioridad = cleanString(req.body.prioridad, 20).toLowerCase();
     if (!["pendiente", "en_reparacion", "reparada", "baja"].includes(estado)) return res.status(400).json({ error: "Estado inválido" });
     if (!["taller/estanteria", "campo", "desguase"].includes(destino)) return res.status(400).json({ error: "Destino inválido" });
+    if (!["normal", "urgente"].includes(prioridad)) return res.status(400).json({ error: "Prioridad inválida" });
     try {
         const db = await ensureDb(); const ref = db.collection("carpasReportes").doc(cleanString(req.params.reportId, 160)); const before = await ref.get();
         if (!before.exists) return res.status(404).json({ error: "Reporte inexistente" });
         const now = new Date().toISOString();
-        await ref.set({ estado, destino, tallerNota: cleanString(req.body.tallerNota), reparadoPor: cleanString(req.body.reparadoPor, 80), updatedAt: now }, { merge: true });
+        await ref.set({ estado, destino, prioridad, tallerNota: cleanString(req.body.tallerNota), reparadoPor: cleanString(req.body.reparadoPor, 80), updatedAt: now }, { merge: true });
         const carpaId = before.data().carpaId; const snap = await db.collection("carpasReportes").where("carpaId", "==", carpaId).limit(200).get();
         const anyPending = snap.docs.some((doc) => doc.id === ref.id ? isPending({ ...doc.data(), estado }) : isPending(doc.data()));
         await db.collection("carpas").doc(carpaId).set({ hasPending: anyPending, updatedAt: now }, { merge: true });

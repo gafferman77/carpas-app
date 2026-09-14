@@ -3,7 +3,7 @@
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const views = $$(".view");
-  const state = { role: "", key: "", carpaId: carpaFromPath(), historyCarpa: "" };
+  const state = { role: "", key: "", carpaId: carpaFromPath(), historyCarpa: "", foto: "" };
 
   function carpaFromPath() { const m = location.pathname.match(/\/carpa\/(CARPA-\d{3})/i); return m ? m[1].toUpperCase() : ""; }
   function normalizeCarpa(value) {
@@ -25,7 +25,8 @@
   $("#logoutBtn").onclick = goHome;
   function begin(role) {
     state.role = role; $("#loginRole").textContent = role === "ATP" ? "ATP" : "TALLER";
-    $("#tallerLoginLogo").classList.toggle("hidden", role !== "TALLER");
+    document.body.dataset.mode = role.toLowerCase();
+    $("#loginHelp").textContent = role === "ATP" ? "Escaneaste la ficha de una carpa. Ingresá la clave para informar su estado." : "Ingresá a la mesa de trabajo para organizar las reparaciones.";
     $("#keyInput").value = ""; message($("#loginMsg"), ""); show("loginView"); $("#keyInput").focus();
   }
   $("#keyInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#loginBtn").click(); });
@@ -42,9 +43,38 @@
   $("#searchBtn").onclick = () => useSearch($("#carpaSearch"), $("#searchMsg"), openAtp);
   $("#carpaSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("#searchBtn").click(); });
   function openAtp(id) { state.carpaId = id; $("#atpCarpa").textContent = id; show("atpView"); }
-  $$("[data-problem], [data-point]").forEach(btn => btn.onclick = () => btn.classList.toggle("selected"));
+  $$("[data-problem], [data-point]").forEach(btn => btn.onclick = () => {
+    btn.classList.toggle("selected");
+    if (btn.dataset.problem) {
+      const count = $$("[data-problem].selected").length;
+      $("#problemCount").textContent = count ? `${count} seleccionado${count === 1 ? "" : "s"}` : "Ninguno seleccionado";
+    }
+  });
+  $("#photoBtn").onclick = () => $("#photoInput").click();
+  $("#photoInput").onchange = async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    message($("#atpMsg"), "Preparando foto…");
+    try {
+      state.foto = await compressPhoto(file);
+      $("#photoPreview img").src = state.foto;
+      $("#photoPreview").classList.remove("hidden");
+      message($("#atpMsg"), "Foto lista.", "success");
+    } catch (_) { message($("#atpMsg"), "No se pudo preparar la foto. Probá nuevamente.", "error"); }
+  };
+  $("#removePhotoBtn").onclick = () => {
+    state.foto = ""; $("#photoInput").value = ""; $("#photoPreview").classList.add("hidden"); message($("#atpMsg"), "");
+  };
+  async function compressPhoto(file) {
+    const image = new Image(); image.src = URL.createObjectURL(file);
+    await image.decode();
+    const max = 1100; const scale = Math.min(1, max / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(image.src);
+    return canvas.toDataURL("image/jpeg", 0.68);
+  }
   $("#sendReportBtn").onclick = async () => {
-    const btn = $("#sendReportBtn"); const body = { role: state.role, key: state.key, reportadoPor: $("#reportadoPor").value, problemas: $$("[data-problem].selected").map(x => x.dataset.problem), puntos: $$("[data-point].selected").map(x => x.dataset.point), prioridad: $("input[name=priority]:checked").value, detalle: $("#detalle").value.trim() };
+    const btn = $("#sendReportBtn"); const body = { role: state.role, key: state.key, problemas: $$("[data-problem].selected").map(x => x.dataset.problem), puntos: $$("[data-point].selected").map(x => x.dataset.point), detalle: $("#detalle").value.trim(), foto: state.foto };
     btn.disabled = true; btn.textContent = "Enviando…"; const data = await api(`/api/carpas/${state.carpaId}/reportes`, json("POST", body)); btn.disabled = false; btn.textContent = "Enviar al taller";
     if (data.error) return message($("#atpMsg"), data.error, "error");
     $("#atpView").innerHTML = `<div class="panel success-card"><span class="check">✓</span><h2>Reporte enviado</h2><p>El taller ya puede ver el parte de <strong>${data.carpaId}</strong> en su lista de pendientes.</p><button class="primary" id="finishBtn">Finalizar</button></div>`;
@@ -75,8 +105,9 @@
       $(".report-carpa", node).textContent = report.carpaId; $("time", node).textContent = formatDate(report.createdAt); $(".status", node).textContent = status.replace("_", " "); $(".status", node).classList.add(status);
       const tags = [...(report.problemas || [])]; if (report.prioridad === "urgente") tags.unshift("⚠ urgente"); $(".tags", node).innerHTML = tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
       $(".detail", node).textContent = report.detalle || "Sin observaciones."; $(".zones", node).textContent = `Zonas: ${(report.puntos || report.partes || []).map(pointLabel).join(", ") || "sin marcar"}${report.reportadoPor ? ` · Reportó: ${report.reportadoPor}` : ""}`;
-      $(".state", node).value = status; $(".destination", node).value = report.destino || "taller/estanteria"; $(".repaired-by", node).value = report.reparadoPor || ""; $(".shop-note", node).value = report.tallerNota || "";
-      $(".save", node).onclick = async e => { const button = e.currentTarget; button.disabled = true; const result = await api(`/api/reportes/${encodeURIComponent(report.id)}`, json("PATCH", { role: "TALLER", key: state.key, estado: $(".state", article).value, destino: $(".destination", article).value, reparadoPor: $(".repaired-by", article).value, tallerNota: $(".shop-note", article).value })); button.disabled = false; if (result.error) return message($(".save-msg", article), result.error, "error"); message($(".save-msg", article), "Cambios guardados.", "success"); loadPending(); if (state.historyCarpa) loadHistory(state.historyCarpa); };
+      if (report.foto) { $(".report-photo", node).src = report.foto; $(".report-photo", node).classList.remove("hidden"); }
+      $(".shop-priority", node).value = report.prioridad || "normal"; $(".state", node).value = status; $(".destination", node).value = report.destino || "taller/estanteria"; $(".repaired-by", node).value = report.reparadoPor || ""; $(".shop-note", node).value = report.tallerNota || "";
+      $(".save", node).onclick = async e => { const button = e.currentTarget; button.disabled = true; const result = await api(`/api/reportes/${encodeURIComponent(report.id)}`, json("PATCH", { role: "TALLER", key: state.key, prioridad: $(".shop-priority", article).value, estado: $(".state", article).value, destino: $(".destination", article).value, reparadoPor: $(".repaired-by", article).value, tallerNota: $(".shop-note", article).value })); button.disabled = false; if (result.error) return message($(".save-msg", article), result.error, "error"); message($(".save-msg", article), "Cambios guardados.", "success"); loadPending(); if (state.historyCarpa) loadHistory(state.historyCarpa); };
       container.appendChild(node);
     });
   }
