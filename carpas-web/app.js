@@ -35,7 +35,7 @@
     $("#loginBtn").disabled = true; const data = await api("/api/auth", json("POST", { role: state.role, key })); $("#loginBtn").disabled = false;
     if (!data.ok) return message($("#loginMsg"), "La clave no es correcta.", "error");
     state.key = key; $("#logoutBtn").classList.remove("hidden");
-    if (state.role === "TALLER") { show("tallerView"); loadPending(); }
+    if (state.role === "TALLER") openWorkshop();
     else if (state.carpaId) openAtp(state.carpaId); else { $("#searchRole").textContent = "ATP"; show("searchView"); }
   };
 
@@ -81,22 +81,47 @@
     $("#finishBtn").onclick = goHome;
   };
 
-  $("#refreshBtn").onclick = loadPending;
-  $("#tallerSearchBtn").onclick = () => useSearch($("#tallerSearch"), $("#tallerSearchMsg"), loadHistory);
+  $("#refreshBtn").onclick = () => { loadPending(); const visible = $("#workshopHistoryPane").classList.contains("hidden") ? "" : "history"; if (visible) loadAllHistory(); };
+  $("#tallerSearchBtn").onclick = () => useSearch($("#tallerSearch"), $("#tallerSearchMsg"), loadCarpaSearch);
   $("#tallerSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("#tallerSearchBtn").click(); });
-  $$("[data-tab]").forEach(btn => btn.onclick = () => selectTab(btn.dataset.tab));
-  function selectTab(tab) { $$("[data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === tab)); $("#pendingPane").classList.toggle("hidden", tab !== "pending"); $("#historyPane").classList.toggle("hidden", tab !== "history"); }
+  $$("[data-workshop]").forEach(btn => btn.onclick = () => selectWorkshopPane(btn.dataset.workshop));
+  $$(".workshop-back").forEach(btn => btn.onclick = () => selectWorkshopPane("home"));
+  function selectWorkshopPane(section) {
+    const map = { home: "workshopHomePane", search: "workshopSearchPane", history: "workshopHistoryPane", poles: "workshopPolesPane" };
+    $$(".workshop-pane").forEach(pane => pane.classList.toggle("hidden", pane.id !== map[section]));
+    $$("[data-workshop]").forEach(btn => btn.classList.toggle("active", btn.dataset.workshop === section));
+    if (section === "history") loadAllHistory();
+    if (section === "search") setTimeout(() => $("#tallerSearch").focus(), 50);
+    scrollTo({ top: 0, behavior: "smooth" });
+  }
+  async function openWorkshop() {
+    document.body.dataset.mode = "taller"; $("#logoutBtn").classList.remove("hidden"); show("tallerView"); selectWorkshopPane("home");
+    const reset = await api("/api/taller/inicializar", json("POST", { role: "TALLER", key: state.key }));
+    if (reset.error) message($("#baselineMsg"), reset.error, "error");
+    else if (!reset.alreadyDone && reset.updated) message($("#baselineMsg"), `${reset.updated} reportes anteriores quedaron guardados en el historial.`, "success");
+    loadPending();
+  }
   async function loadPending() {
     $("#pendingList").innerHTML = '<div class="empty">Cargando pendientes…</div>';
     const data = await api(`/api/taller/pendientes?role=TALLER&key=${encodeURIComponent(state.key)}`);
     if (data.error) { $("#pendingList").innerHTML = `<div class="empty">${escapeHtml(data.error)}</div>`; return; }
     $("#pendingCount").textContent = data.total; renderReports($("#pendingList"), data.reportes, "No hay reparaciones pendientes.");
   }
-  async function loadHistory(id) {
-    state.historyCarpa = id; selectTab("history"); $("#historyTitle").classList.remove("hidden"); $("#historyTitle strong").textContent = id; $("#historyList").innerHTML = '<div class="empty">Cargando historial…</div>';
+  async function loadCarpaSearch(id) {
+    state.historyCarpa = id; $("#searchResultList").innerHTML = '<div class="empty">Cargando ficha…</div>';
     const data = await api(`/api/carpas/${id}/reportes?role=TALLER&key=${encodeURIComponent(state.key)}`);
+    if (data.error) return renderReports($("#searchResultList"), [], data.error);
+    const indicator = $("#carpaStatus"); indicator.classList.remove("hidden", "pending", "repaired", "empty");
+    if (data.pendientes > 0) { indicator.classList.add("pending"); $("strong", indicator).textContent = `${id} · PENDIENTE`; }
+    else if (data.total > 0) { indicator.classList.add("repaired"); $("strong", indicator).textContent = `${id} · ARREGLADA`; }
+    else { indicator.classList.add("empty"); $("strong", indicator).textContent = `${id} · SIN REPORTES`; }
+    renderReports($("#searchResultList"), data.reportes, `${id} todavía no tiene reportes.`);
+  }
+  async function loadAllHistory() {
+    $("#historyList").innerHTML = '<div class="empty">Cargando historial…</div>';
+    const data = await api(`/api/taller/historial?role=TALLER&key=${encodeURIComponent(state.key)}`);
     if (data.error) return renderReports($("#historyList"), [], data.error);
-    renderReports($("#historyList"), data.reportes, `${id} todavía no tiene reportes.`);
+    $("#historyCount").textContent = data.total; renderReports($("#historyList"), data.reportes, "Todavía no hay carpas arregladas.");
   }
   function renderReports(container, reports, empty) {
     container.innerHTML = ""; if (!reports.length) { container.innerHTML = `<div class="empty">${escapeHtml(empty)}</div>`; return; }
@@ -106,14 +131,18 @@
       const tags = [...(report.problemas || [])]; if (report.prioridad === "urgente") tags.unshift("⚠ urgente"); $(".tags", node).innerHTML = tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
       $(".detail", node).textContent = report.detalle || "Sin observaciones."; $(".zones", node).textContent = `Zonas: ${(report.puntos || report.partes || []).map(pointLabel).join(", ") || "sin marcar"}${report.reportadoPor ? ` · Reportó: ${report.reportadoPor}` : ""}`;
       if (report.foto) { $(".report-photo", node).src = report.foto; $(".report-photo", node).classList.remove("hidden"); }
-      $(".shop-priority", node).value = report.prioridad || "normal"; $(".state", node).value = status; $(".destination", node).value = report.destino || "taller/estanteria"; $(".repaired-by", node).value = report.reparadoPor || ""; $(".shop-note", node).value = report.tallerNota || "";
-      $(".save", node).onclick = async e => { const button = e.currentTarget; button.disabled = true; const result = await api(`/api/reportes/${encodeURIComponent(report.id)}`, json("PATCH", { role: "TALLER", key: state.key, prioridad: $(".shop-priority", article).value, estado: $(".state", article).value, destino: $(".destination", article).value, reparadoPor: $(".repaired-by", article).value, tallerNota: $(".shop-note", article).value })); button.disabled = false; if (result.error) return message($(".save-msg", article), result.error, "error"); message($(".save-msg", article), "Cambios guardados.", "success"); loadPending(); if (state.historyCarpa) loadHistory(state.historyCarpa); };
+      $(".shop-priority", node).value = report.prioridad || "normal"; $(".state", node).value = status; $(".destination", node).value = report.destino || "taller/estanteria"; $(".shop-note", node).value = report.tallerNota || "";
+      $(".save", node).onclick = async e => { const button = e.currentTarget; button.disabled = true; const result = await api(`/api/reportes/${encodeURIComponent(report.id)}`, json("PATCH", { role: "TALLER", key: state.key, prioridad: $(".shop-priority", article).value, estado: $(".state", article).value, destino: $(".destination", article).value, tallerNota: $(".shop-note", article).value })); button.disabled = false; if (result.error) return message($(".save-msg", article), result.error, "error"); message($(".save-msg", article), "Cambios guardados.", "success"); loadPending(); if (state.historyCarpa) loadCarpaSearch(state.historyCarpa); };
       container.appendChild(node);
     });
   }
   function pointLabel(p) { const m = String(p).match(/^(sobretecho|cuerpo)_p(\d+)$/); if (!m) return p; if (m[1] === "cuerpo" && m[2] === "7") return "Cierre"; return `${m[1] === "cuerpo" ? "Cuerpo" : "Sobretecho"} P${m[2]}`; }
   function formatDate(value) { if (!value) return "Sin fecha"; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }); }
   function escapeHtml(value) { return String(value || "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])); }
-  if (location.pathname === "/taller") begin("TALLER");
+  if (location.pathname === "/taller" && new URLSearchParams(location.search).get("acceso")) {
+    state.role = "TALLER"; state.key = new URLSearchParams(location.search).get("acceso");
+    api("/api/auth", json("POST", { role: state.role, key: state.key })).then(data => data.ok ? openWorkshop() : begin("TALLER"));
+  }
+  else if (location.pathname === "/taller") begin("TALLER");
   else if (state.carpaId) begin("ATP");
 })();

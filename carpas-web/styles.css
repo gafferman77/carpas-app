@@ -35,6 +35,62 @@ label { font-size: 15px; }
   border-radius: 12px; background: rgba(18,55,42,.92); color: #fff; font-weight: 800; cursor: pointer;
 }
 .report-photo { display: block; width: 100%; max-height: 480px; margin-top: 14px; object-fit: contain; border-radius: 14px; background: #eef1ef; }
+.workshop-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0; }
+.workshop-menu button {
+  min-height: 112px; padding: 16px; text-align: left; border: 2px solid transparent; border-radius: 20px;
+  background: #fff; color: var(--green); box-shadow: var(--shadow); cursor: pointer;
+}
+.workshop-menu button.active { border-color: var(--orange); background: #fff8f2; }
+.workshop-menu span, .workshop-menu strong, .workshop-menu small { display: block; }
+.workshop-menu span { color: var(--orange); font-size: 27px; font-weight: 900; }
+.workshop-menu strong { margin: 5px 0 2px; font-size: 19px; }
+.workshop-menu small { color: var(--muted); font-size: 13px; }
+.section-title { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
+.section-title h3 { margin: 0; text-align: left; font-size: 23px; }
+.count-badge { min-width: 32px; padding: 5px 9px; border-radius: 99px; background: var(--orange); color: #fff; text-align: center; font-weight: 900; }
+.carpa-status { display: flex; align-items: center; gap: 13px; margin: 16px 0; padding: 17px; border-radius: 18px; background: #fff; box-shadow: var(--shadow); }
+.status-dot { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; background: #8a938d; box-shadow: 0 0 0 6px rgba(138,147,141,.16); }
+.carpa-status.pending .status-dot { background: #c7362f; box-shadow: 0 0 0 6px rgba(199,54,47,.15); }
+.carpa-status.repaired .status-dot { background: #25824f; box-shadow: 0 0 0 6px rgba(37,130,79,.15); }
+.carpa-status small, .carpa-status strong { display: block; }
+.carpa-status small { color: var(--muted); font-size: 11px; letter-spacing: .1em; font-weight: 800; }
+.carpa-status strong { margin-top: 2px; font-size: 21px; color: var(--green); }
+.poles-coming { text-align: center; padding: 46px 24px; }
+.poles-coming > span { font-size: 52px; color: var(--orange); }
+.poles-coming h3 { font-size: 25px; }
+.poles-coming p { max-width: 560px; margin: 0 auto 18px; color: var(--muted); line-height: 1.5; }
+.poles-coming strong { display: inline-block; padding: 8px 12px; border-radius: 99px; background: var(--mint); color: var(--green); }
+.model-card { overflow: hidden; margin-bottom: 16px; border-radius: 24px; background: #fff; box-shadow: var(--shadow); }
+.model-card > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 20px; background: linear-gradient(120deg, var(--green), var(--green2)); color: #fff; }
+.model-card header h3 { margin: 3px 0 0; text-align: left; font-size: 25px; }
+.model-status { flex: 0 0 auto; padding: 7px 10px; border-radius: 99px; background: var(--orange); font-size: 12px; font-weight: 850; }
+.model-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
+.model-photos figure { overflow: hidden; margin: 0; border-radius: 16px; background: #eef1ef; }
+.model-photos img { display: block; width: 100%; height: 250px; object-fit: cover; }
+.model-photos figcaption { padding: 10px 12px; color: var(--green); font-size: 13px; font-weight: 800; }
+.parts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 16px; }
+.parts-grid section { padding: 16px; border-radius: 16px; background: #f5f7f4; }
+.parts-grid h4, .assembly-reference h4 { margin: 0 0 10px; color: var(--green); font-size: 18px; }
+.parts-grid ul { margin: 0; padding-left: 18px; }
+.parts-grid li { margin: 8px 0; line-height: 1.35; }
+.assembly-reference { margin: 0 16px 16px; padding: 18px; border-radius: 18px; background: #fff6ec; border-left: 5px solid var(--orange); }
+.assembly-reference ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.assembly-reference li { display: flex; align-items: center; gap: 12px; }
+.assembly-reference li > span { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 900; }
+.assembly-reference strong, .assembly-reference small { display: block; }
+.assembly-reference small { margin-top: 2px; color: var(--muted); font-size: 13px; }
+.verification-note { margin: 0; padding: 13px 18px; background: #f3e7c7; color: #604d1d; font-size: 13px; font-weight: 750; }
+.poles-coming.compact { padding: 25px 20px; }
+@media (max-width: 680px) {
+  .workshop-menu { gap: 8px; }
+  .workshop-menu button { min-height: 104px; padding: 12px 9px; border-radius: 17px; text-align: center; }
+  .workshop-menu strong { font-size: 16px; }
+  .workshop-menu small { font-size: 11px; }
+  .model-card > header { align-items: flex-start; }
+  .model-card header h3 { font-size: 21px; }
+  .model-photos, .parts-grid { grid-template-columns: 1fr; }
+  .model-photos img { height: 220px; }
+}
 
 /* Diseño móvil bosque / campamento */
 body[data-mode="atp"] {

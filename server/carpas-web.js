@@ -33,6 +33,7 @@ function cleanList(value, pattern) {
     return [...new Set(value.map((v) => String(v || "").trim().toLowerCase()).filter((v) => pattern.test(v)))];
 }
 function cleanString(value, max = 1000) { return String(value || "").trim().slice(0, max); }
+function dateValue(value) { return value && typeof value.toDate === "function" ? value.toDate().toISOString() : String(value || ""); }
 function isPending(report) {
     const state = report.estado || (report.destino === "campo" ? "reparada" : "pendiente");
     return state === "pendiente" || state === "en_reparacion";
@@ -119,6 +120,38 @@ app.get("/api/taller/pendientes", async (req, res) => {
         res.json({ total: reports.length, reportes: reports });
     } catch (error) { console.error("[pending-list]", error); res.status(500).json({ error: "No se pudo cargar la lista de pendientes" }); }
 });
+app.get("/api/taller/historial", async (req, res) => {
+    if (!requireRole(req.query, "TALLER", res)) return;
+    try {
+        const snap = await (await ensureDb()).collection("carpasReportes").limit(500).get();
+        const reports = sortNewest(snap.docs.map(serializeDoc).filter((report) => !isPending(report)));
+        res.json({ total: reports.length, reportes: reports });
+    } catch (error) { console.error("[history-list]", error); res.status(500).json({ error: "No se pudo cargar el historial" }); }
+});
+app.post("/api/taller/inicializar", async (req, res) => {
+    if (!requireRole(req.body, "TALLER", res)) return;
+    const migrationId = "cierre-hasta-2026-09-07";
+    const cutoff = "2026-09-08T03:00:00.000Z";
+    try {
+        const db = await ensureDb(); const marker = db.collection("sistemaCarpas").doc(migrationId); const done = await marker.get();
+        if (done.exists) return res.json({ ok: true, updated: 0, alreadyDone: true });
+        const snap = await db.collection("carpasReportes").limit(500).get();
+        const targets = snap.docs.filter((doc) => dateValue(doc.data().createdAt) < cutoff && isPending(doc.data()));
+        const now = new Date().toISOString();
+        for (let start = 0; start < targets.length; start += 400) {
+            const batch = db.batch();
+            targets.slice(start, start + 400).forEach((doc) => batch.set(doc.ref, { estado: "reparada", destino: "campo", cierreInicial: true, closedAt: now, updatedAt: now }, { merge: true }));
+            await batch.commit();
+        }
+        const carpas = [...new Set(targets.map((doc) => doc.data().carpaId).filter(Boolean))];
+        for (const carpaId of carpas) {
+            const reports = await db.collection("carpasReportes").where("carpaId", "==", carpaId).limit(200).get();
+            await db.collection("carpas").doc(carpaId).set({ hasPending: reports.docs.some((doc) => isPending(doc.data())), updatedAt: now }, { merge: true });
+        }
+        await marker.set({ completedAt: now, cutoff, updated: targets.length });
+        res.json({ ok: true, updated: targets.length, alreadyDone: false });
+    } catch (error) { console.error("[initial-reset]", error); res.status(500).json({ error: "No se pudo cerrar el historial anterior" }); }
+});
 app.patch("/api/reportes/:reportId", async (req, res) => {
     if (!requireRole(req.body, "TALLER", res)) return;
     const estado = cleanString(req.body.estado, 30).toLowerCase(); const destino = cleanString(req.body.destino, 30).toLowerCase(); const prioridad = cleanString(req.body.prioridad, 20).toLowerCase();
@@ -129,7 +162,7 @@ app.patch("/api/reportes/:reportId", async (req, res) => {
         const db = await ensureDb(); const ref = db.collection("carpasReportes").doc(cleanString(req.params.reportId, 160)); const before = await ref.get();
         if (!before.exists) return res.status(404).json({ error: "Reporte inexistente" });
         const now = new Date().toISOString();
-        await ref.set({ estado, destino, prioridad, tallerNota: cleanString(req.body.tallerNota), reparadoPor: cleanString(req.body.reparadoPor, 80), updatedAt: now }, { merge: true });
+        await ref.set({ estado, destino, prioridad, tallerNota: cleanString(req.body.tallerNota), updatedAt: now }, { merge: true });
         const carpaId = before.data().carpaId; const snap = await db.collection("carpasReportes").where("carpaId", "==", carpaId).limit(200).get();
         const anyPending = snap.docs.some((doc) => doc.id === ref.id ? isPending({ ...doc.data(), estado }) : isPending(doc.data()));
         await db.collection("carpas").doc(carpaId).set({ hasPending: anyPending, updatedAt: now }, { merge: true });
