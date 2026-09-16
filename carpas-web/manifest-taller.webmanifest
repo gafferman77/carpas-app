@@ -1,0 +1,16 @@
+{
+  "name": "Taller de Carpas",
+  "short_name": "Taller",
+  "description": "Panel de reparaciones y fichas técnicas de las carpas.",
+  "lang": "es-AR",
+  "start_url": "/taller?acceso=taller",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f3ed",
+  "theme_color": "#12372a",
+  "icons": [
+    { "src": "/assets/taller-app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/taller-app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

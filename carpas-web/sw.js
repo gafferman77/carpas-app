@@ -1,5 +1,5 @@
-const CACHE = "carpas-shell-v7";
-const SHELL = ["/", "/styles.css", "/app.js", "/assets/taller-logo.webp", "/assets/atp-forest.webp", "/assets/campinox-clasica-despiece.webp", "/assets/campinox-clasica-cumbre.webp"];
+const CACHE = "carpas-shell-v8";
+const SHELL = ["/", "/styles.css", "/app.js", "/manifest-taller.webmanifest", "/favicon.ico", "/assets/taller-logo.webp", "/assets/taller-app-icon-192.png", "/assets/taller-app-icon-512.png", "/assets/atp-forest.webp", "/assets/campinox-clasica-despiece.webp", "/assets/campinox-clasica-cumbre.webp"];
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {
