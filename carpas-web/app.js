@@ -4,6 +4,38 @@
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const views = $$(".view");
   const state = { role: "", key: "", carpaId: carpaFromPath(), historyCarpa: "", foto: "" };
+  const poleModels = {
+    azul: {
+      name: "Campinox azul",
+      cross: [["Extremo", 57, 2, "G-57"]],
+      crossMiddle: ["Medio", 50, 1, "A-50"],
+      vertical: [["Pie", 64, 2, "H-64"], ["Medio", 64, 2, "D-64"], ["Puntera", 50, 2, "C-50"]]
+    },
+    pasante: {
+      name: "Campinox pasante con tira",
+      cross: [["Extremo", 57, 2, "G-57"]],
+      crossMiddle: ["Medio", 50, 1, "A-50"],
+      vertical: [["Pie", 64, 2, "H-64"], ["Medio", 64, 2, "D-64"], ["Puntera", 55, 2, "C-55"]]
+    },
+    piragua: {
+      name: "Piragua",
+      cross: [["Extremo", 70, 2, "G-70"]],
+      crossMiddle: ["Medio", 70, 1, "B-70"],
+      vertical: [["Pie", 64, 2, "H-64"], ["Medio", 64, 2, "D-64"], ["Puntera", 55, 2, "C-55"]]
+    },
+    ardilla: {
+      name: "Ardilla",
+      cross: [["Extremo", 57, 1, "G-57"], ["Extremo", 68, 1, "H-68"]],
+      crossMiddle: ["Medio", 70, 1, "B-70"],
+      vertical: [["Pie", 64, 2, "H-64"], ["Medio", 64, 2, "D-64"], ["Puntera", 55, 2, "C-55"]]
+    },
+    nahuel: {
+      name: "Nahuel",
+      cross: [["Extremo", 57, 2, "G-57"]],
+      crossMiddle: ["Medio", 64, 1, "B-64"],
+      vertical: [["Pie", 64, 2, "H-64"], ["Medio", 64, 2, "D-64"], ["Puntera", 45, 2, "C-45"]]
+    }
+  };
 
   function carpaFromPath() { const m = location.pathname.match(/\/carpa\/(CARPA-\d{3})/i); return m ? m[1].toUpperCase() : ""; }
   function normalizeCarpa(value) {
@@ -24,6 +56,13 @@
   $$("[data-back]").forEach(btn => btn.onclick = goHome);
   $("#logoutBtn").onclick = goHome;
   function begin(role) {
+    if (role === "TALLER") {
+      state.role = "TALLER";
+      state.key = "";
+      document.body.dataset.mode = "taller";
+      openWorkshop();
+      return;
+    }
     state.role = role; $("#loginRole").textContent = role === "ATP" ? "ATP" : "TALLER";
     document.body.dataset.mode = role.toLowerCase();
     $("#loginHelp").textContent = role === "ATP" ? "Escaneaste la ficha de una carpa. Ingresá la clave para informar su estado." : "Ingresá a la mesa de trabajo para organizar las reparaciones.";
@@ -94,6 +133,52 @@
     if (section === "search") setTimeout(() => $("#tallerSearch").focus(), 50);
     scrollTo({ top: 0, behavior: "smooth" });
   }
+  function polePiece(item) {
+    return `<li><div><strong>${escapeHtml(item[0])}</strong><span>${item[1]} cm ×${item[2]}</span></div><b>${escapeHtml(item[3])}</b></li>`;
+  }
+  function renderPoleModel(key) {
+    const model = poleModels[key] || poleModels.azul;
+    const crossPieces = [...model.cross, model.crossMiddle];
+    const crossTotal = crossPieces.reduce((sum, item) => sum + item[1] * item[2], 0);
+    const verticalTotal = model.vertical.reduce((sum, item) => sum + item[1], 0);
+    $("#poleModelName").textContent = model.name;
+    $("#poleModelTotals").textContent = `Suma sin encastres: travesaño ${crossTotal} cm · cada vertical ${verticalTotal} cm`;
+    $("#poleCrossList").innerHTML = crossPieces.map(polePiece).join("");
+    $("#poleVerticalList").innerHTML = model.vertical.map(polePiece).join("");
+    const captions = $$(".pole-photo figcaption");
+    captions[0].textContent = `Pie · ${model.vertical[0][1]} cm`;
+    captions[1].textContent = `Medio · ${model.vertical[1][1]} cm`;
+    captions[2].textContent = `Puntera · ${model.vertical[2][1]} cm`;
+    $$("[data-pole-model]").forEach(button => button.classList.toggle("active", button.dataset.poleModel === key));
+  }
+  function buildPoleLibrary() {
+    const pane = $("#workshopPolesPane");
+    pane.innerHTML = `<button class="back workshop-back" type="button">← Pendientes</button>
+      <div class="section-title"><div><span class="eyebrow">BIBLIOTECA DE PIEZAS</span><h3>Parantes y travesaños</h3></div><span class="count-badge">5</span></div>
+      <div class="pole-model-tabs" role="tablist" aria-label="Modelos de carpa">
+        <button type="button" data-pole-model="azul">Campinox azul</button>
+        <button type="button" data-pole-model="pasante">Pasante con tira</button>
+        <button type="button" data-pole-model="piragua">Piragua</button>
+        <button type="button" data-pole-model="ardilla">Ardilla</button>
+        <button type="button" data-pole-model="nahuel">Nahuel</button>
+      </div>
+      <article class="pole-library-card">
+        <header><div><span class="eyebrow">CARPA CANADIENSE</span><h3 id="poleModelName"></h3><p id="poleModelTotals"></p></div><img src="/assets/taller-logo.webp" alt="Logo del Taller de Carpas"></header>
+        <div class="pole-reference-photos">
+          <figure class="pole-photo"><img src="/assets/parante-pie.jpg" alt="Pie con base naranja"><figcaption></figcaption></figure>
+          <figure class="pole-photo"><img src="/assets/parante-medio.jpg" alt="Medio del parante con encastre"><figcaption></figcaption></figure>
+          <figure class="pole-photo"><img src="/assets/parante-puntera.jpg" alt="Puntera con varilla"><figcaption></figcaption></figure>
+        </div>
+        <div class="pole-parts-columns">
+          <section><h4>Travesaño</h4><p class="pole-help">Piezas horizontales</p><ul id="poleCrossList" class="pole-piece-list"></ul></section>
+          <section><h4>Parantes verticales</h4><p class="pole-help">Dos juegos por carpa</p><ul id="poleVerticalList" class="pole-piece-list"></ul></section>
+        </div>
+        <div class="shelf-legend"><strong>Cómo leer la ubicación</strong><span>La letra indica la estantería y el número indica el sector.</span></div>
+      </article>`;
+    $(".workshop-back", pane).onclick = () => selectWorkshopPane("home");
+    $$("[data-pole-model]", pane).forEach(button => button.onclick = () => renderPoleModel(button.dataset.poleModel));
+    renderPoleModel("azul");
+  }
   async function openWorkshop() {
     document.body.dataset.mode = "taller"; $("#logoutBtn").classList.remove("hidden"); show("tallerView"); selectWorkshopPane("home");
     const reset = await api("/api/taller/inicializar", json("POST", { role: "TALLER", key: state.key }));
@@ -139,10 +224,7 @@
   function pointLabel(p) { const m = String(p).match(/^(sobretecho|cuerpo)_p(\d+)$/); if (!m) return p; if (m[1] === "cuerpo" && m[2] === "7") return "Cierre"; return `${m[1] === "cuerpo" ? "Cuerpo" : "Sobretecho"} P${m[2]}`; }
   function formatDate(value) { if (!value) return "Sin fecha"; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }); }
   function escapeHtml(value) { return String(value || "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])); }
-  if (location.pathname === "/taller" && new URLSearchParams(location.search).get("acceso")) {
-    state.role = "TALLER"; state.key = new URLSearchParams(location.search).get("acceso");
-    api("/api/auth", json("POST", { role: state.role, key: state.key })).then(data => data.ok ? openWorkshop() : begin("TALLER"));
-  }
-  else if (location.pathname === "/taller") begin("TALLER");
+  buildPoleLibrary();
+  if (location.pathname === "/taller") begin("TALLER");
   else if (state.carpaId) begin("ATP");
 })();

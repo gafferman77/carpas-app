@@ -6,7 +6,6 @@ const admin = require("firebase-admin");
 
 const PORT = Number(process.env.PORT || process.env.CARPAS_PORT || 5050);
 const ATP_KEY = String(process.env.ATP_KEY || "faro");
-const TALLER_KEY = String(process.env.TALLER_KEY || "taller");
 const APP_VERSION = String(process.env.APP_VERSION || process.env.RENDER_GIT_COMMIT || Date.now());
 const PUBLIC_DIR = path.resolve(process.cwd(), "carpas-web");
 const INDEX_PATH = path.join(PUBLIC_DIR, "index.html");
@@ -25,7 +24,7 @@ function normalizeCarpaId(value) {
 function normalizeText(value) { return String(value || "").trim().toLowerCase(); }
 function validateAccess(role, key) {
     if (role === "ATP") return normalizeText(key) === normalizeText(ATP_KEY);
-    if (role === "TALLER") return normalizeText(key) === normalizeText(TALLER_KEY);
+    if (role === "TALLER") return true;
     return false;
 }
 function cleanList(value, pattern) {
