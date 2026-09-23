@@ -129,17 +129,16 @@ app.get("/api/taller/historial", async (req, res) => {
 });
 app.post("/api/taller/inicializar", async (req, res) => {
     if (!requireRole(req.body, "TALLER", res)) return;
-    const migrationId = "cierre-hasta-2026-09-07";
-    const cutoff = "2026-09-08T03:00:00.000Z";
+    const migrationId = "cierre-pendientes-previos-v11";
     try {
         const db = await ensureDb(); const marker = db.collection("sistemaCarpas").doc(migrationId); const done = await marker.get();
         if (done.exists) return res.json({ ok: true, updated: 0, alreadyDone: true });
         const snap = await db.collection("carpasReportes").limit(500).get();
-        const targets = snap.docs.filter((doc) => dateValue(doc.data().createdAt) < cutoff && isPending(doc.data()));
+        const targets = snap.docs.filter((doc) => isPending(doc.data()));
         const now = new Date().toISOString();
         for (let start = 0; start < targets.length; start += 400) {
             const batch = db.batch();
-            targets.slice(start, start + 400).forEach((doc) => batch.set(doc.ref, { estado: "reparada", destino: "campo", cierreInicial: true, closedAt: now, updatedAt: now }, { merge: true }));
+            targets.slice(start, start + 400).forEach((doc) => batch.set(doc.ref, { estado: "reparada", destino: "campo", cierreGeneralV11: true, closedAt: now, updatedAt: now }, { merge: true }));
             await batch.commit();
         }
         const carpas = [...new Set(targets.map((doc) => doc.data().carpaId).filter(Boolean))];
@@ -147,7 +146,7 @@ app.post("/api/taller/inicializar", async (req, res) => {
             const reports = await db.collection("carpasReportes").where("carpaId", "==", carpaId).limit(200).get();
             await db.collection("carpas").doc(carpaId).set({ hasPending: reports.docs.some((doc) => isPending(doc.data())), updatedAt: now }, { merge: true });
         }
-        await marker.set({ completedAt: now, cutoff, updated: targets.length });
+        await marker.set({ completedAt: now, scope: "all-pending-at-first-run", updated: targets.length });
         res.json({ ok: true, updated: targets.length, alreadyDone: false });
     } catch (error) { console.error("[initial-reset]", error); res.status(500).json({ error: "No se pudo cerrar el historial anterior" }); }
 });
