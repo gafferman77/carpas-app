@@ -189,6 +189,10 @@ export default {
         try {
           const marker="cierre-pendientes-previos-v11";
           if(await getDoc(env,"sistemaCarpas",marker)) return json({ok:true,updated:0,alreadyDone:true});
+          // Never run a destructive bulk closure automatically in a new environment.
+          // The old frontend invokes this endpoint when opening the workshop.
+          // If the historical marker is missing, require an explicit migration plan.
+          if (true) return json({error:"Inicialización masiva bloqueada por seguridad; no se modificaron reportes"},409);
           const targets=(await list(env,"carpasReportes",500)).filter(pending),now=new Date().toISOString();
           for(const report of targets) await patch(env,"carpasReportes",report.id,{estado:"reparada",destino:"campo",cierreGeneralV11:true,closedAt:now,updatedAt:now});
           for(const carpaId of [...new Set(targets.map(x=>x.carpaId).filter(Boolean))]) {
