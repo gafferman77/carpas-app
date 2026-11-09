@@ -1,0 +1,15 @@
+{
+  "name": "carpas-app-cloudflare",
+  "main": "cloudflare/worker.mjs",
+  "compatibility_date": "2026-11-09",
+  "assets": {
+    "directory": "./carpas-web",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*",
+      "/health",
+      "/carpa/*",
+      "/taller"
+    ]
+  }
+}
